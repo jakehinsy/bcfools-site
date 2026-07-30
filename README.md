@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Brew City F.O.O.L.S.
 
-## Getting Started
+Public website for the Brew City chapter of F.O.O.L.S. International, serving
+Milwaukee and southeastern Wisconsin.
 
-First, run the development server:
+## Project direction
+
+- Static-first Next.js App Router site deployed through Vercel
+- Public chapter, training, event, membership, leadership, and contact content
+- Organization details and external destinations kept in typed local
+  configuration
+- No private Platoon member data or authenticated content
+
+The first design pass establishes the homepage, responsive navigation, chapter
+brand system, training imagery, membership flow, social metadata, and useful
+empty state for events.
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Validation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+```
 
-## Learn More
+## Content and links
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Organization-specific labels, fees, navigation, and external destinations live
+in `src/config/site.ts`. Current links intentionally continue to use Brew
+City's existing Jotform, contact, social, and dues destinations until those
+services are confirmed during the migration handoff.
