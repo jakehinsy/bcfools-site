@@ -5,17 +5,17 @@ const principles = [
   {
     number: "01",
     title: "Duty",
-    copy: "Show up prepared, share what you know, and serve the fire service with purpose.",
+    copy: "Show up for the job and for one another. If you know something, share it. If you need help, ask.",
   },
   {
     number: "02",
     title: "Pride",
-    copy: "Honor the craft, the people beside you, and the standards that keep crews strong.",
+    copy: "Take pride in the craft, your crew, and leaving the fire service stronger than you found it.",
   },
   {
     number: "03",
     title: "Tradition",
-    copy: "Carry hard-earned knowledge forward while staying hungry enough to keep learning.",
+    copy: "Keep the stories, lessons, and kitchen-table wisdom moving from one generation to the next.",
   },
 ];
 
@@ -32,8 +32,8 @@ const membershipSteps = [
   },
   {
     number: "03",
-    title: "Join the brotherhood",
-    copy: "The chapter reviews your application and follows up with next steps.",
+    title: "Pull up a chair",
+    copy: "Once approved, come to a class, lend a hand, and get to know the crew.",
   },
 ];
 
@@ -125,39 +125,39 @@ export default function Home() {
           <div className="shell hero__content">
             <div className="hero__copy">
               <p className="eyebrow eyebrow--light">
-                Firefighters Own Outstanding Leadership Skills
+                From the firehouse. For the fire service.
               </p>
               <h1>
-                Built on brotherhood.
-                <span>Driven by training.</span>
+                Train together.
+                <span>Carry it forward.</span>
               </h1>
               <p className="hero__lede">
-                Keeping duty, pride, and tradition alive through accessible
-                fire-service training, shared knowledge, and service to the
-                communities of southeastern Wisconsin.
+                Firefighters from departments near and far, coming together to
+                learn, laugh, swap stories, and keep the traditions of the fire
+                service alive.
               </p>
               <div className="hero__actions">
                 <a className="button button--primary" href="#training">
-                  Explore training <Arrow />
+                  Train with us <Arrow />
                 </a>
                 <a className="button button--ghost" href="#join">
-                  Join Brew City
+                  Pull up a chair
                 </a>
               </div>
             </div>
 
             <div className="hero__rail" aria-label="Chapter highlights">
               <div>
-                <strong>2009</strong>
-                <span>Chapter established</span>
+                <strong>All ranks</strong>
+                <span>Probies, veterans, and chiefs</span>
               </div>
               <div>
-                <strong>Low cost</strong>
-                <span>Training for firefighters</span>
+                <strong>Hands-on</strong>
+                <span>Learn it. Share it. Pass it on.</span>
               </div>
               <div>
-                <strong>Local</strong>
-                <span>Milwaukee & Southeast Wisconsin</span>
+                <strong>One table</strong>
+                <span>Firefighters from every patch</span>
               </div>
             </div>
           </div>
@@ -167,19 +167,19 @@ export default function Home() {
           <div className="shell">
             <div className="section-heading section-heading--split">
               <div>
-                <p className="eyebrow">Who we are</p>
-                <h2>Pass the knowledge forward.</h2>
+                <p className="eyebrow">The kitchen table is open</p>
+                <h2>Different patches. One fire service.</h2>
               </div>
               <div className="section-heading__copy">
                 <p>
-                  Brew City F.O.O.L.S. began with a simple idea: bring
-                  like-minded firefighters together to train, learn from one
-                  another, and strengthen the calling they share.
+                  No matter the patch on your sleeve, there is a place for you
+                  here. Brew City F.O.O.L.S. is a crew of firefighters who come
+                  together because the job means more when we share it.
                 </p>
                 <p>
-                  From probies to chiefs, everyone has something to offer. We
-                  keep that exchange moving—and put the same spirit to work for
-                  our neighbors.
+                  We train hard, trade stories, learn from one another, help our
+                  neighbors, and make sure what was handed to us stays alive for
+                  the next generation.
                 </p>
               </div>
             </div>
@@ -212,18 +212,18 @@ export default function Home() {
             </div>
 
             <div className="training__copy">
-              <p className="eyebrow">Train with purpose</p>
-              <h2>Better prepared. Better together.</h2>
+              <p className="eyebrow">No egos. No sales pitch.</p>
+              <h2>Just firefighters getting better together.</h2>
               <p className="training__lede">
-                We connect firefighters with high-quality, practical training
-                at the lowest cost possible. Host a class at your department,
-                train alongside neighboring crews, or bring an idea to the
-                chapter.
+                The best training feels like the best parts of the firehouse:
+                honest, practical, and built on firefighters sharing what
+                works. We keep it affordable so more crews can get on the
+                training ground.
               </p>
               <ul className="check-list">
-                <li>Practical instruction from experienced firefighters</li>
-                <li>Opportunities built for departments across the region</li>
-                <li>A chapter committed to learning—not profit</li>
+                <li>Hands-on skills you can take back to your crew</li>
+                <li>Instructors who teach from experience, not a script</li>
+                <li>Room for every rank to learn, teach, and ask questions</li>
               </ul>
               <a
                 className="text-link"
@@ -231,7 +231,7 @@ export default function Home() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Request a training class <Arrow />
+                Bring training to your department <Arrow />
               </a>
             </div>
           </div>
@@ -240,8 +240,10 @@ export default function Home() {
         <section className="section section--navy" id="events">
           <div className="shell events">
             <div className="events__heading">
-              <p className="eyebrow eyebrow--red">Upcoming opportunities</p>
-              <h2>Meet us on the training ground.</h2>
+              <p className="eyebrow eyebrow--red">
+                Classes, gatherings & good company
+              </p>
+              <h2>Come train. Stay awhile.</h2>
             </div>
             <div className="events__card">
               <div className="events__date" aria-hidden="true">
@@ -249,11 +251,12 @@ export default function Home() {
                 <strong>TBA</strong>
               </div>
               <div className="events__body">
-                <p className="events__status">Calendar update</p>
-                <h3>New public training dates are being finalized.</h3>
+                <p className="events__status">The next one is coming</p>
+                <h3>We’re lining up the next chance to get together.</h3>
                 <p>
-                  Follow the chapter for announcements, or contact the training
-                  team to start a conversation about hosting a class.
+                  Follow the chapter for new dates. Whether it is a hands-on
+                  class, a chapter gathering, or a good reason to sit around a
+                  table, there is always room for one more.
                 </p>
               </div>
               <div className="events__actions">
@@ -263,7 +266,7 @@ export default function Home() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Follow updates <Arrow />
+                  See what’s coming <Arrow />
                 </a>
                 <a
                   className="text-link text-link--light"
@@ -271,7 +274,7 @@ export default function Home() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Contact training
+                  Bring a class our way
                 </a>
               </div>
             </div>
@@ -281,11 +284,12 @@ export default function Home() {
         <section className="section join" id="join">
           <div className="shell">
             <div className="section-heading section-heading--center">
-              <p className="eyebrow">Membership</p>
-              <h2>Pull up a chair at the kitchen table.</h2>
+              <p className="eyebrow">There’s room at the table</p>
+              <h2>Bring your stories. Bring your questions. Bring your crew.</h2>
               <p>
-                Brew City is accepting new members who want to learn, teach,
-                serve, and keep the fire-service brotherhood strong.
+                If you care about the craft, want to keep learning, and believe
+                the traditions of the fire service are worth carrying forward,
+                you will fit right in.
               </p>
             </div>
 
@@ -306,7 +310,7 @@ export default function Home() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Start an application <Arrow />
+                Join Brew City <Arrow />
               </a>
               <a
                 className="button button--outline"
@@ -323,8 +327,8 @@ export default function Home() {
         <section className="contact" id="contact">
           <div className="shell contact__inner">
             <div>
-              <p className="eyebrow eyebrow--light">Start a conversation</p>
-              <h2>Have a training request or chapter question?</h2>
+              <p className="eyebrow eyebrow--light">Say hello</p>
+              <h2>Want to train, host a class, or meet the crew?</h2>
             </div>
             <a
               className="button button--light"
@@ -332,7 +336,7 @@ export default function Home() {
               target="_blank"
               rel="noreferrer"
             >
-              Contact Brew City <Arrow />
+              Talk to Brew City <Arrow />
             </a>
           </div>
         </section>

@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: "%s | Brew City F.O.O.L.S.",
   },
   description:
-    "Fire-service brotherhood, hands-on training, and community support for firefighters across Milwaukee and southeastern Wisconsin.",
+    "Firefighters from across the region coming together to train, share hard-earned lessons, and carry forward the traditions of the fire service.",
   keywords: [
     "Brew City FOOLS",
     "firefighter training",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     siteName: "Brew City F.O.O.L.S.",
     title: "Brew City F.O.O.L.S. | Duty. Pride. Tradition.",
     description:
-      "Brotherhood, hands-on training, and community support for southeastern Wisconsin's fire service.",
+      "Firefighters coming together to train, share stories, and carry the traditions of the fire service forward.",
     images: [
       {
         url: "/og.png",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Brew City F.O.O.L.S.",
     description:
-      "Brotherhood, hands-on training, and community support for southeastern Wisconsin's fire service.",
+      "Firefighters coming together to train, share stories, and carry the traditions of the fire service forward.",
     images: ["/og.png"],
   },
 };
