@@ -17,6 +17,7 @@ export const siteConfig = {
     renewal: "https://brewcityfools.com/shop/membership-renewal/",
     newMembership: "https://brewcityfools.com/shop/new-membership/",
     contact: "https://brewcityfools.com/contact/",
+    platoon: "https://platoonapp.com",
     facebook: "https://www.facebook.com/brewcity.fools",
     instagram: "https://www.instagram.com/brewcityfools/",
   },

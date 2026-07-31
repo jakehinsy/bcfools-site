@@ -127,9 +127,28 @@ export default async function JoinPage({
       </main>
 
       <footer className={styles.footer}>
-        <div className="shell">
-          <strong>{siteConfig.name}</strong>
-          <span>{siteConfig.motto}</span>
+        <div className={`shell ${styles.footerInner}`}>
+          <div className={styles.footerChapter}>
+            <strong>{siteConfig.name}</strong>
+            <span>{siteConfig.motto}</span>
+          </div>
+          <a
+            aria-label="Powered by Platoon"
+            className={styles.poweredBy}
+            href={siteConfig.links.platoon}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <Image
+              alt=""
+              height={24}
+              src="/images/platoon-logo.png"
+              width={24}
+            />
+            <span>
+              Powered by <strong>Platoon</strong>
+            </span>
+          </a>
         </div>
       </footer>
     </>
