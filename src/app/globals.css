@@ -844,6 +844,7 @@ img {
 }
 
 .site-footer__bottom {
+  align-items: center;
   border-top: 1px solid rgb(255 255 255 / 12%);
   color: rgb(255 255 255 / 40%);
   display: flex;
@@ -1073,6 +1074,7 @@ img {
   }
 
   .site-footer__bottom {
+    align-items: flex-start;
     flex-direction: column;
     gap: 8px;
   }

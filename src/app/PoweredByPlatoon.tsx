@@ -2,11 +2,15 @@ import Image from "next/image";
 import { siteConfig } from "@/config/site";
 import styles from "./PoweredByPlatoon.module.css";
 
-export function PoweredByPlatoon() {
+type PoweredByPlatoonProps = {
+  inline?: boolean;
+};
+
+export function PoweredByPlatoon({ inline = false }: PoweredByPlatoonProps) {
   return (
     <a
       aria-label="Powered by Platoon"
-      className={styles.poweredBy}
+      className={`${styles.poweredBy} ${inline ? styles.inline : ""}`}
       href={siteConfig.links.platoon}
       rel="noreferrer"
       target="_blank"

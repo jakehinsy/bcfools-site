@@ -33,8 +33,22 @@
   outline-offset: 3px;
 }
 
+.inline {
+  padding: 0;
+  white-space: nowrap;
+}
+
+.inline img {
+  height: 18px;
+  width: 18px;
+}
+
 @media (max-width: 620px) {
   .poweredBy {
     margin-left: -8px;
+  }
+
+  .inline {
+    margin-left: 0;
   }
 }

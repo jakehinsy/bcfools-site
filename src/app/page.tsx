@@ -387,8 +387,8 @@ export default function Home() {
           <span>
             © {new Date().getFullYear()} {siteConfig.name}
           </span>
+          <PoweredByPlatoon inline />
           <span>{siteConfig.region}</span>
-          <PoweredByPlatoon />
         </div>
       </footer>
     </>
