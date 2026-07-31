@@ -258,11 +258,9 @@ export default function Home() {
               <div className="events__actions">
                 <a
                   className="button button--light"
-                  href={siteConfig.links.instagram}
-                  target="_blank"
-                  rel="noreferrer"
+                  href="/events"
                 >
-                  See what’s coming <Arrow />
+                  Open the calendar <Arrow />
                 </a>
                 <a
                   className="text-link text-link--light"

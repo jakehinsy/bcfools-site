@@ -7,7 +7,7 @@ export const siteConfig = {
   navigation: [
     { label: "About", href: "/#about" },
     { label: "Training", href: "/#training" },
-    { label: "Events", href: "/#events" },
+    { label: "Events", href: "/events" },
     { label: "Join", href: "/join" },
     { label: "Contact", href: "/#contact" },
   ],

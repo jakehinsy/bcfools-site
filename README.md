@@ -21,6 +21,11 @@ until Platoon's tenant-safe intake endpoint and Square hosted checkout are
 available. The existing Jotform remains linked as the live fallback during
 that integration period.
 
+The `/events` route contains a responsive public calendar and upcoming-event
+list. Event rendering is driven by the typed shape in `src/data/events.ts`;
+the source remains intentionally empty until an approved public Platoon event
+feed is available.
+
 ## Local development
 
 ```bash
