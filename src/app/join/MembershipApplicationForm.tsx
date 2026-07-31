@@ -1,10 +1,15 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { siteConfig } from "@/config/site";
 import styles from "./join.module.css";
 
 type ApplicationType = "new" | "renewal";
+type SubmissionState =
+  | { status: "idle" }
+  | { status: "submitting" }
+  | { status: "success"; applicationReference: string }
+  | { status: "error"; message: string };
 
 const stateOptions = [
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA",
@@ -21,25 +26,92 @@ export function MembershipApplicationForm({
 }) {
   const [applicationType, setApplicationType] =
     useState<ApplicationType>(defaultType);
-  const [previewSubmitted, setPreviewSubmitted] = useState(false);
+  const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
+  const submissionId = useRef<string | null>(null);
 
   const price =
     applicationType === "new"
       ? siteConfig.membership.newMemberPrice
       : siteConfig.membership.renewalPrice;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function resetAttempt() {
+    if (submission.status !== "submitting") {
+      submissionId.current = null;
+      setSubmission({ status: "idle" });
+    }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setPreviewSubmitted(true);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const currentSubmissionId = submissionId.current ?? crypto.randomUUID();
+    submissionId.current = currentSubmissionId;
+    setSubmission({ status: "submitting" });
+
+    try {
+      const response = await fetch("/api/membership-applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: currentSubmissionId,
+          application: {
+            schemaVersion: "2026-07-31",
+            applicationType,
+            applicant: {
+              firstName: formData.get("firstName"),
+              lastName: formData.get("lastName"),
+              email: formData.get("email"),
+              phone: formData.get("phone"),
+            },
+            fireService: {
+              departmentName: formData.get("fireDepartment"),
+              departmentState: formData.get("departmentState"),
+              rank: formData.get("rank"),
+              status: formData.get("fireServiceStatus"),
+              previousChapter: formData.get("previousChapter"),
+              foolsId: formData.get("foolsId"),
+            },
+            attestations: {
+              adultFirefighter: formData.get("attestation") === "on",
+            },
+          },
+        }),
+      });
+      const result = (await response.json()) as {
+        applicationReference?: string;
+        error?: { code?: string };
+      };
+
+      if (!response.ok || !result.applicationReference) {
+        const message =
+          result.error?.code === "RATE_LIMITED"
+            ? "The test system is busy right now. Please wait a minute and try again."
+            : result.error?.code === "VALIDATION_FAILED"
+              ? "Please review the form fields and try again."
+              : "We couldn’t send this test application. Please try again in a moment.";
+        setSubmission({ status: "error", message });
+        return;
+      }
+
+      setSubmission({ status: "success", applicationReference: result.applicationReference });
+      form.reset();
+    } catch {
+      setSubmission({
+        status: "error",
+        message: "We couldn’t reach the test system. Please check your connection and try again.",
+      });
+    }
   }
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
+    <form className={styles.form} onChange={resetAttempt} onSubmit={handleSubmit}>
       <div className={styles.previewNotice} role="note">
-        <strong>Form preview</strong>
+        <strong>Staging preview</strong>
         <p>
-          This page is ready for review, but it is not connected to Platoon or
-          Square yet. Nothing entered here will be saved or sent.
+          Applications submitted here are saved only in Platoon&apos;s test
+          environment for internal review. Square is not connected, and this is
+          not yet the live application. Please use test details only.
         </p>
       </div>
 
@@ -54,7 +126,6 @@ export function MembershipApplicationForm({
               name="applicationType"
               onChange={() => {
                 setApplicationType("new");
-                setPreviewSubmitted(false);
               }}
               type="radio"
               value="new"
@@ -74,7 +145,6 @@ export function MembershipApplicationForm({
               name="applicationType"
               onChange={() => {
                 setApplicationType("renewal");
-                setPreviewSubmitted(false);
               }}
               type="radio"
               value="renewal"
@@ -174,7 +244,7 @@ export function MembershipApplicationForm({
 
       <div className={styles.checkoutSummary}>
         <div>
-          <span>Due after submission</span>
+          <span>Due after chapter approval</span>
           <strong>
             {applicationType === "new" ? "New membership" : "Annual renewal"}
           </strong>
@@ -183,18 +253,32 @@ export function MembershipApplicationForm({
         <b>${price}.00</b>
       </div>
 
-      <button className={styles.submitButton} type="submit">
-        Continue to secure payment <span aria-hidden="true">→</span>
+      <button
+        className={styles.submitButton}
+        disabled={submission.status === "submitting" || submission.status === "success"}
+        type="submit"
+      >
+        {submission.status === "submitting"
+          ? "Sending application…"
+          : submission.status === "success"
+            ? "Application sent"
+            : "Submit for chapter review"}
       </button>
 
-      {previewSubmitted ? (
+      {submission.status === "success" ? (
         <div className={styles.previewResult} role="status" tabIndex={-1}>
-          <strong>The form itself is working.</strong>
+          <strong>Test application received.</strong>
           <p>
-            In the live version, this is where your application will be saved
-            securely and you will continue to Square. This preview did not save
-            or transmit any information.
+            Platoon saved this application for chapter review. No payment was
+            requested or charged. Test reference: {submission.applicationReference}
           </p>
+        </div>
+      ) : null}
+
+      {submission.status === "error" ? (
+        <div className={styles.errorResult} role="alert">
+          <strong>Application not sent.</strong>
+          <p>{submission.message} Nothing was charged.</p>
         </div>
       ) : null}
 

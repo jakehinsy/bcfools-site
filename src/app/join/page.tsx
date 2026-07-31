@@ -101,15 +101,15 @@ export default async function JoinPage({
                 <li>
                   <span>02</span>
                   <div>
-                    <strong>Pay securely</strong>
-                    <p>Complete a one-time payment through Square.</p>
+                    <strong>Chapter review</strong>
+                    <p>A designated chapter officer reviews every application.</p>
                   </div>
                 </li>
                 <li>
                   <span>03</span>
                   <div>
-                    <strong>Chapter review</strong>
-                    <p>A designated chapter officer reviews every application.</p>
+                    <strong>Finish membership</strong>
+                    <p>Approved applicants receive separate account and payment steps.</p>
                   </div>
                 </li>
               </ol>

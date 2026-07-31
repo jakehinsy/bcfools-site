@@ -16,10 +16,18 @@ brand system, training imagery, membership flow, social metadata, and useful
 empty state for events.
 
 The `/join` route contains the native membership-form preview for new members
-and annual renewals. It intentionally does not persist or transmit entries
-until Platoon's tenant-safe intake endpoint and Square hosted checkout are
-available. The existing Jotform remains linked as the live fallback during
-that integration period.
+and annual renewals. Its same-origin server route can submit signed applications
+to Platoon's tenant-safe staging intake while keeping the program credential out
+of the browser. Square remains a separate later step. The existing Jotform stays
+linked as the live fallback during staging validation.
+
+The server route requires these Vercel Preview environment variables:
+
+- `PLATOON_MEMBERSHIP_INTAKE_URL` — the full HTTPS Platoon intake endpoint
+- `PLATOON_MEMBERSHIP_PROGRAM_KEY` — the public program key ID
+- `PLATOON_MEMBERSHIP_PROGRAM_SECRET` — the server-only HMAC secret
+
+Do not expose these values through `NEXT_PUBLIC_*` variables.
 
 The `/events` route contains a responsive public calendar and upcoming-event
 list. Event rendering is driven by the typed shape in `src/data/events.ts`;

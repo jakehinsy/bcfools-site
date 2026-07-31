@@ -531,6 +531,12 @@
   transform: translateY(-2px);
 }
 
+.submitButton:disabled {
+  cursor: wait;
+  opacity: 0.68;
+  transform: none;
+}
+
 .submitButton:focus-visible,
 .typeCard:focus-within,
 .backLink:focus-visible,
@@ -552,6 +558,24 @@
 }
 
 .previewResult p {
+  font-size: 0.84rem;
+  line-height: 1.55;
+  margin: 5px 0 0;
+}
+
+.errorResult {
+  background: #fff1f1;
+  border: 1px solid #e2a1a5;
+  color: #6e151b;
+  margin-top: 18px;
+  padding: 20px;
+}
+
+.errorResult strong {
+  font-size: 0.92rem;
+}
+
+.errorResult p {
   font-size: 0.84rem;
   line-height: 1.55;
   margin: 5px 0 0;
