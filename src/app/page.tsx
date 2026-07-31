@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { siteConfig } from "@/config/site";
+import { PoweredByPlatoon } from "./PoweredByPlatoon";
 
 const principles = [
   {
@@ -387,6 +388,7 @@ export default function Home() {
             © {new Date().getFullYear()} {siteConfig.name}
           </span>
           <span>{siteConfig.region}</span>
+          <PoweredByPlatoon />
         </div>
       </footer>
     </>

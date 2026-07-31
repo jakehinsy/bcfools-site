@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { publicEvents } from "@/data/events";
+import { PoweredByPlatoon } from "../PoweredByPlatoon";
 import { EventsCalendar } from "./EventsCalendar";
 import styles from "./events.module.css";
 
@@ -160,23 +161,7 @@ export default function EventsPage() {
             <strong>{siteConfig.name}</strong>
             <span>{siteConfig.motto}</span>
           </div>
-          <a
-            aria-label="Powered by Platoon"
-            className={styles.poweredBy}
-            href={siteConfig.links.platoon}
-            rel="noreferrer"
-            target="_blank"
-          >
-            <Image
-              alt=""
-              height={24}
-              src="/images/platoon-logo.png"
-              width={24}
-            />
-            <span>
-              Powered by <strong>Platoon</strong>
-            </span>
-          </a>
+          <PoweredByPlatoon />
         </div>
       </footer>
     </>
