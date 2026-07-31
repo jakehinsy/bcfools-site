@@ -83,9 +83,7 @@ export default function Home() {
 
           <a
             className="button button--header"
-            href={siteConfig.links.application}
-            target="_blank"
-            rel="noreferrer"
+            href={siteConfig.links.applicationRoute}
           >
             Join the chapter <Arrow />
           </a>
@@ -100,9 +98,7 @@ export default function Home() {
               ))}
               <a
                 className="mobile-nav__cta"
-                href={siteConfig.links.application}
-                target="_blank"
-                rel="noreferrer"
+                href={siteConfig.links.applicationRoute}
               >
                 Membership application <Arrow />
               </a>
@@ -306,17 +302,13 @@ export default function Home() {
             <div className="join__actions">
               <a
                 className="button button--primary"
-                href={siteConfig.links.application}
-                target="_blank"
-                rel="noreferrer"
+                href={`${siteConfig.links.applicationRoute}?type=new#application`}
               >
                 Join Brew City <Arrow />
               </a>
               <a
                 className="button button--outline"
-                href={siteConfig.links.renewal}
-                target="_blank"
-                rel="noreferrer"
+                href={`${siteConfig.links.applicationRoute}?type=renewal#application`}
               >
                 Renew membership
               </a>

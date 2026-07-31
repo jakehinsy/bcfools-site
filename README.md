@@ -15,6 +15,12 @@ The first design pass establishes the homepage, responsive navigation, chapter
 brand system, training imagery, membership flow, social metadata, and useful
 empty state for events.
 
+The `/join` route contains the native membership-form preview for new members
+and annual renewals. It intentionally does not persist or transmit entries
+until Platoon's tenant-safe intake endpoint and Square hosted checkout are
+available. The existing Jotform remains linked as the live fallback during
+that integration period.
+
 ## Local development
 
 ```bash
@@ -33,7 +39,7 @@ npm run build
 
 ## Content and links
 
-Organization-specific labels, fees, navigation, and external destinations live
-in `src/config/site.ts`. Current links intentionally continue to use Brew
-City's existing Jotform, contact, social, and dues destinations until those
-services are confirmed during the migration handoff.
+Organization-specific labels, fees, review roles, navigation, and external
+destinations live in `src/config/site.ts`. The current Jotform, contact, social,
+and legacy dues destinations remain available until the replacement workflow
+is validated end to end.

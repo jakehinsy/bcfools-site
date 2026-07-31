@@ -5,13 +5,14 @@ export const siteConfig = {
   established: 2009,
   motto: "Duty. Pride. Tradition.",
   navigation: [
-    { label: "About", href: "#about" },
-    { label: "Training", href: "#training" },
-    { label: "Events", href: "#events" },
-    { label: "Join", href: "#join" },
-    { label: "Contact", href: "#contact" },
+    { label: "About", href: "/#about" },
+    { label: "Training", href: "/#training" },
+    { label: "Events", href: "/#events" },
+    { label: "Join", href: "/join" },
+    { label: "Contact", href: "/#contact" },
   ],
   links: {
+    applicationRoute: "/join",
     application: "https://www.jotform.com/form/211474845726058",
     renewal: "https://brewcityfools.com/shop/membership-renewal/",
     newMembership: "https://brewcityfools.com/shop/new-membership/",
@@ -22,5 +23,7 @@ export const siteConfig = {
   membership: {
     newMemberPrice: 50,
     renewalPrice: 35,
+    paymentMode: "one-time",
+    reviewRoles: ["Membership Trustee", "President"],
   },
 } as const;
