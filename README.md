@@ -26,6 +26,7 @@ The server route requires these Vercel Preview environment variables:
 - `PLATOON_MEMBERSHIP_INTAKE_URL` — the full HTTPS Platoon intake endpoint
 - `PLATOON_MEMBERSHIP_PROGRAM_KEY` — the public program key ID
 - `PLATOON_MEMBERSHIP_PROGRAM_SECRET` — the server-only HMAC secret
+- `PLATOON_MEMBERSHIP_INTAKE_BYPASS_SECRET` — the server-only Vercel Preview bypass secret
 
 Do not expose these values through `NEXT_PUBLIC_*` variables.
 

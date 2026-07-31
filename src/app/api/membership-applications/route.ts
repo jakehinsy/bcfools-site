@@ -100,17 +100,30 @@ function intakeConfiguration() {
   const endpointValue = process.env.PLATOON_MEMBERSHIP_INTAKE_URL?.trim();
   const programKeyId = process.env.PLATOON_MEMBERSHIP_PROGRAM_KEY?.trim();
   const secret = process.env.PLATOON_MEMBERSHIP_PROGRAM_SECRET?.trim();
-  if (!endpointValue || !programKeyId || !PROGRAM_KEY_PATTERN.test(programKeyId) || !secret) {
+  const bypassSecret = process.env.PLATOON_MEMBERSHIP_INTAKE_BYPASS_SECRET?.trim();
+  if (
+    !endpointValue ||
+    !programKeyId ||
+    !PROGRAM_KEY_PATTERN.test(programKeyId) ||
+    !secret ||
+    !bypassSecret
+  ) {
     throw new Error("Membership intake is not configured.");
   }
   const endpoint = new URL(endpointValue);
   if (endpoint.protocol !== "https:" || endpoint.pathname !== SIGNATURE_PATH) {
     throw new Error("Membership intake endpoint is invalid.");
   }
-  return { endpoint, programKeyId, secret };
+  return { endpoint, programKeyId, secret, bypassSecret };
 }
 
-function signedHeaders(rawBody: string, submissionId: string, programKeyId: string, secret: string) {
+function signedHeaders(
+  rawBody: string,
+  submissionId: string,
+  programKeyId: string,
+  secret: string,
+  bypassSecret: string,
+) {
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const nonce = randomBytes(24).toString("base64url");
   const bodyHash = createHash("sha256").update(rawBody).digest("hex");
@@ -125,6 +138,7 @@ function signedHeaders(rawBody: string, submissionId: string, programKeyId: stri
     "X-Platoon-Timestamp": timestamp,
     "X-Platoon-Nonce": nonce,
     "X-Platoon-Signature": `v1=${signature}`,
+    "x-vercel-protection-bypass": bypassSecret,
   };
 }
 
@@ -156,11 +170,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: { code: "VALIDATION_FAILED" } }, { status: 400 });
     }
 
-    const { endpoint, programKeyId, secret } = intakeConfiguration();
+    const { endpoint, programKeyId, secret, bypassSecret } = intakeConfiguration();
     const rawBody = JSON.stringify(submission.application);
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: signedHeaders(rawBody, submission.submissionId, programKeyId, secret),
+      headers: signedHeaders(
+        rawBody,
+        submission.submissionId,
+        programKeyId,
+        secret,
+        bypassSecret,
+      ),
       body: rawBody,
       cache: "no-store",
       redirect: "error",
