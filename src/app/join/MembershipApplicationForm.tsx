@@ -91,8 +91,7 @@ export function MembershipApplicationForm({
       <fieldset className={styles.fieldset}>
         <legend>About you</legend>
         <p className={styles.legendHelp}>
-          Tell us how to reach you. We do not collect your date of birth or
-          home address.
+          Tell us how the chapter can reach you about your membership.
         </p>
         <div className={styles.fieldGrid}>
           <label className={styles.field}>

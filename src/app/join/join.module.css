@@ -242,30 +242,11 @@
   font-size: 0.94rem;
 }
 
-.sidebar li p,
-.privacyNote p {
+.sidebar li p {
   color: #62636d;
   font-size: 0.88rem;
   line-height: 1.55;
   margin: 5px 0 0;
-}
-
-.privacyNote {
-  background: var(--navy-950);
-  border-left: 5px solid var(--red-600);
-  color: var(--white);
-  margin-top: 28px;
-  padding: 22px 24px;
-}
-
-.privacyNote strong {
-  font-family: var(--font-oswald), Impact, sans-serif;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.privacyNote p {
-  color: rgb(255 255 255 / 68%);
 }
 
 .formPanel {

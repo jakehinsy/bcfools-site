@@ -112,13 +112,6 @@ export default async function JoinPage({
                   </div>
                 </li>
               </ol>
-              <div className={styles.privacyNote}>
-                <strong>Only what we need</strong>
-                <p>
-                  This application does not ask for your date of birth or home
-                  address.
-                </p>
-              </div>
             </aside>
 
             <div className={styles.formPanel}>
