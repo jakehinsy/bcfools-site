@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
         destination: "/contact",
         permanent: true,
       },
+      {
+        source: "/who-we-are",
+        destination: "/about",
+        permanent: true,
+      },
+      {
+        source: "/f-o-o-l-s-acronyms",
+        destination: "/about",
+        permanent: true,
+      },
     ];
   },
 };

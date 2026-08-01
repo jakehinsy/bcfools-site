@@ -179,6 +179,9 @@ export default function Home() {
                   neighbors, and make sure what was handed to us stays alive for
                   the next generation.
                 </p>
+                <Link className="text-link" href="/about">
+                  Read our story <Arrow />
+                </Link>
               </div>
             </div>
 

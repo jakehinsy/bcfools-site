@@ -40,6 +40,11 @@ leadership and role-directory experience. Officer names, portraits, and public
 role addresses are configuration-driven, and the legacy `/e-board` path
 redirects permanently to the merged page.
 
+The `/about` route combines Brew City's chapter history, purpose, and selected
+fire-service traditions into one concise public story. The legacy
+`/who-we-are` and `/f-o-o-l-s-acronyms` paths redirect permanently to it, while
+the structured chapter pillars and acronyms live in `src/data/about.ts`.
+
 ## Local development
 
 ```bash

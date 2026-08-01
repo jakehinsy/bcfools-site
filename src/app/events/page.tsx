@@ -68,6 +68,7 @@ export default function EventsPage() {
             </span>
           </Link>
           <nav className={styles.pageNav} aria-label="Events page navigation">
+            <Link href="/about">About</Link>
             <Link href="/#training">Training</Link>
             <Link href="/join">Join</Link>
             <Link href="/contact">Contact</Link>

@@ -5,7 +5,7 @@ export const siteConfig = {
   established: 2009,
   motto: "Duty. Pride. Tradition.",
   navigation: [
-    { label: "About", href: "/#about" },
+    { label: "About", href: "/about" },
     { label: "Training", href: "/#training" },
     { label: "Events", href: "/events" },
     { label: "Join", href: "/join" },
@@ -17,6 +17,7 @@ export const siteConfig = {
     renewal: "https://brewcityfools.com/shop/membership-renewal/",
     newMembership: "https://brewcityfools.com/shop/new-membership/",
     contact: "/contact",
+    international: "https://www.foolsinternational.com/about-us",
     platoon: "https://platoonapp.com",
     facebook: "https://www.facebook.com/brewcity.fools",
     instagram: "https://www.instagram.com/brewcityfools/",
