@@ -19,6 +19,7 @@ export const siteConfig = {
     contact: "/contact",
     international: "https://www.foolsinternational.com/about-us",
     platoon: "https://platoonapp.com",
+    memberDashboard: "https://app.platoonapp.com",
     facebook: "https://www.facebook.com/brewcity.fools",
     instagram: "https://www.instagram.com/brewcityfools/",
   },

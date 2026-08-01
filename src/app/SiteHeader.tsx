@@ -8,9 +8,21 @@ export function SiteHeader() {
     <>
       <div className="utility-bar">
         <div className="shell utility-bar__inner">
-          <span>{siteConfig.region}</span>
-          <span aria-hidden="true">{"\u2022"}</span>
-          <span>Established {siteConfig.established}</span>
+          <div className="utility-bar__chapter">
+            <span className="utility-bar__region">{siteConfig.region}</span>
+            <span className="utility-bar__divider" aria-hidden="true">
+              {"\u2022"}
+            </span>
+            <span>Established {siteConfig.established}</span>
+          </div>
+          <a
+            className="utility-bar__member-link"
+            href={siteConfig.links.memberDashboard}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Member Login <ArrowIcon />
+          </a>
         </div>
       </div>
 
