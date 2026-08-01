@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { chapterPillars, chapterStory, traditions } from "@/data/about";
+import { ArrowIcon } from "../ArrowIcon";
 import { PoweredByPlatoon } from "../PoweredByPlatoon";
+import { SiteHeader } from "../SiteHeader";
 import styles from "./about.module.css";
 
 export const metadata: Metadata = {
@@ -12,10 +14,6 @@ export const metadata: Metadata = {
     "Learn how Brew City FOOLS brings southeastern Wisconsin firefighters together through training, brotherhood, tradition, and service.",
 };
 
-function Arrow() {
-  return <span aria-hidden="true">&nearr;</span>;
-}
-
 export default function AboutPage() {
   return (
     <>
@@ -23,43 +21,7 @@ export default function AboutPage() {
         Skip to our story
       </a>
 
-      <div className={styles.utilityBar}>
-        <div className="shell">
-          {siteConfig.region} <span aria-hidden="true">&bull;</span> Established{" "}
-          {siteConfig.established}
-        </div>
-      </div>
-
-      <header className={styles.header}>
-        <div className={`shell ${styles.headerInner}`}>
-          <Link
-            aria-label="Brew City FOOLS home"
-            className={styles.brand}
-            href="/"
-          >
-            <Image
-              alt=""
-              height={58}
-              priority
-              src="/images/brew-city-fools-logo.png"
-              width={60}
-            />
-            <span>
-              <strong>{siteConfig.shortName}</strong>
-              <small>{siteConfig.motto}</small>
-            </span>
-          </Link>
-          <nav className={styles.pageNav} aria-label="About page navigation">
-            <Link href="/#training">Training</Link>
-            <Link href="/events">Events</Link>
-            <Link href="/join">Join</Link>
-            <Link href="/contact">Contact</Link>
-          </nav>
-          <Link className={styles.backLink} href="/">
-            <span aria-hidden="true">&larr;</span> Back to home
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main id="about-content">
         <section className={styles.hero}>
@@ -189,7 +151,7 @@ export default function AboutPage() {
                 rel="noreferrer"
                 target="_blank"
               >
-                Visit FOOLS International <Arrow />
+                Visit FOOLS International <ArrowIcon />
               </a>
             </div>
           </div>
@@ -246,7 +208,7 @@ export default function AboutPage() {
             </div>
             <div className={styles.joinActions}>
               <Link href="/join">
-                Join Brew City <Arrow />
+                Join Brew City <ArrowIcon />
               </Link>
               <Link href="/contact">Talk to the crew</Link>
             </div>

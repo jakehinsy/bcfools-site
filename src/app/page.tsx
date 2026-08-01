@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { ArrowIcon } from "./ArrowIcon";
 import { PoweredByPlatoon } from "./PoweredByPlatoon";
+import { SiteHeader } from "./SiteHeader";
 
 const principles = [
   {
@@ -39,10 +41,6 @@ const membershipSteps = [
   },
 ];
 
-function Arrow() {
-  return <span aria-hidden="true">↗</span>;
-}
-
 export default function Home() {
   return (
     <>
@@ -50,64 +48,7 @@ export default function Home() {
         Skip to main content
       </a>
 
-      <div className="utility-bar">
-        <div className="shell utility-bar__inner">
-          <span>{siteConfig.region}</span>
-          <span aria-hidden="true">•</span>
-          <span>Established {siteConfig.established}</span>
-        </div>
-      </div>
-
-      <header className="site-header">
-        <div className="shell site-header__inner">
-          <a className="brand" href="#top" aria-label="Brew City FOOLS home">
-            <Image
-              className="brand__mark"
-              src="/images/brew-city-fools-logo.png"
-              alt=""
-              width={72}
-              height={70}
-              priority
-            />
-            <span className="brand__copy">
-              <strong>{siteConfig.shortName}</strong>
-              <small>{siteConfig.motto}</small>
-            </span>
-          </a>
-
-          <nav className="desktop-nav" aria-label="Primary navigation">
-            {siteConfig.navigation.map((item) => (
-              <a key={item.href} href={item.href}>
-                {item.label}
-              </a>
-            ))}
-          </nav>
-
-          <a
-            className="button button--header"
-            href={siteConfig.links.applicationRoute}
-          >
-            Join the chapter <Arrow />
-          </a>
-
-          <details className="mobile-nav">
-            <summary>Menu</summary>
-            <nav aria-label="Mobile navigation">
-              {siteConfig.navigation.map((item) => (
-                <a key={item.href} href={item.href}>
-                  {item.label}
-                </a>
-              ))}
-              <a
-                className="mobile-nav__cta"
-                href={siteConfig.links.applicationRoute}
-              >
-                Membership application <Arrow />
-              </a>
-            </nav>
-          </details>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main id="main-content">
         <section className="hero" id="top">
@@ -136,7 +77,7 @@ export default function Home() {
               </p>
               <div className="hero__actions">
                 <a className="button button--primary" href="#training">
-                  Train with us <Arrow />
+                  Train with us <ArrowIcon />
                 </a>
                 <a className="button button--ghost" href="#join">
                   Pull up a chair
@@ -180,7 +121,7 @@ export default function Home() {
                   the next generation.
                 </p>
                 <Link className="text-link" href="/about">
-                  Read our story <Arrow />
+                  Read our story <ArrowIcon />
                 </Link>
               </div>
             </div>
@@ -230,7 +171,7 @@ export default function Home() {
                 className="text-link"
                 href={siteConfig.links.contact}
               >
-                Bring training to your department <Arrow />
+                Bring training to your department <ArrowIcon />
               </Link>
             </div>
           </div>
@@ -263,7 +204,7 @@ export default function Home() {
                   className="button button--light"
                   href="/events"
                 >
-                  Open the calendar <Arrow />
+                  Open the calendar <ArrowIcon />
                 </a>
                 <Link
                   className="text-link text-link--light"
@@ -303,7 +244,7 @@ export default function Home() {
                 className="button button--primary"
                 href={`${siteConfig.links.applicationRoute}?type=new#application`}
               >
-                Join Brew City <Arrow />
+                Join Brew City <ArrowIcon />
               </a>
               <a
                 className="button button--outline"
@@ -325,7 +266,7 @@ export default function Home() {
               className="button button--light"
               href={siteConfig.links.contact}
             >
-              Talk to Brew City <Arrow />
+              Talk to Brew City <ArrowIcon />
             </Link>
           </div>
         </section>

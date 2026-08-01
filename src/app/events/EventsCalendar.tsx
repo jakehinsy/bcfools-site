@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { ArrowIcon } from "../ArrowIcon";
 import {
   eventCategories,
   type EventCategory,
@@ -156,7 +157,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
               onClick={() => changeMonth(-1)}
               type="button"
             >
-              <span aria-hidden="true">&larr;</span>
+              <ArrowIcon direction="left" />
             </button>
             <h2 aria-live="polite">{monthLabel}</h2>
             <button
@@ -164,7 +165,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
               onClick={() => changeMonth(1)}
               type="button"
             >
-              <span aria-hidden="true">&rarr;</span>
+              <ArrowIcon direction="right" />
             </button>
           </div>
 
@@ -281,7 +282,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                     </div>
                     {event.href && (
                       <a href={event.href}>
-                        Details <span aria-hidden="true">&nearr;</span>
+                        Details <ArrowIcon />
                       </a>
                     )}
                   </article>
@@ -305,7 +306,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                   rel="noreferrer"
                   target="_blank"
                 >
-                  Follow for updates <span aria-hidden="true">&nearr;</span>
+                  Follow for updates <ArrowIcon />
                 </a>
                 <Link href={siteConfig.links.contact}>
                   Ask about an event

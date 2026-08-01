@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { PoweredByPlatoon } from "../PoweredByPlatoon";
+import { SiteHeader } from "../SiteHeader";
 import { MembershipApplicationForm } from "./MembershipApplicationForm";
 import styles from "./join.module.css";
 
@@ -26,32 +26,7 @@ export default async function JoinPage({
         Skip to application
       </a>
 
-      <div className={styles.utilityBar}>
-        <div className="shell">
-          {siteConfig.region} · Established {siteConfig.established}
-        </div>
-      </div>
-
-      <header className={styles.header}>
-        <div className={`shell ${styles.headerInner}`}>
-          <Link className={styles.brand} href="/">
-            <Image
-              alt=""
-              height={60}
-              priority
-              src="/images/brew-city-fools-logo.png"
-              width={62}
-            />
-            <span>
-              <strong>{siteConfig.shortName}</strong>
-              <small>{siteConfig.motto}</small>
-            </span>
-          </Link>
-          <Link className={styles.backLink} href="/">
-            <span aria-hidden="true">←</span> Back to the chapter
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main>
         <section className={styles.hero}>

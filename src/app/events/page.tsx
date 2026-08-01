@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { publicEvents } from "@/data/events";
+import { ArrowIcon } from "../ArrowIcon";
 import { PoweredByPlatoon } from "../PoweredByPlatoon";
+import { SiteHeader } from "../SiteHeader";
 import { EventsCalendar } from "./EventsCalendar";
 import styles from "./events.module.css";
 
@@ -41,43 +43,7 @@ export default function EventsPage() {
         Skip to event calendar
       </a>
 
-      <div className={styles.utilityBar}>
-        <div className="shell">
-          {siteConfig.region} <span aria-hidden="true">&bull;</span> Established{" "}
-          {siteConfig.established}
-        </div>
-      </div>
-
-      <header className={styles.header}>
-        <div className={`shell ${styles.headerInner}`}>
-          <Link
-            aria-label="Brew City FOOLS home"
-            className={styles.brand}
-            href="/"
-          >
-            <Image
-              alt=""
-              height={58}
-              priority
-              src="/images/brew-city-fools-logo.png"
-              width={60}
-            />
-            <span>
-              <strong>{siteConfig.shortName}</strong>
-              <small>{siteConfig.motto}</small>
-            </span>
-          </Link>
-          <nav className={styles.pageNav} aria-label="Events page navigation">
-            <Link href="/about">About</Link>
-            <Link href="/#training">Training</Link>
-            <Link href="/join">Join</Link>
-            <Link href="/contact">Contact</Link>
-          </nav>
-          <Link className={styles.backLink} href="/">
-            <span aria-hidden="true">&larr;</span> Back to home
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main id="events-content">
         <section className={styles.hero}>
@@ -148,7 +114,7 @@ export default function EventsPage() {
             <Link
               href={siteConfig.links.contact}
             >
-              Talk to Brew City <span aria-hidden="true">&nearr;</span>
+              Talk to Brew City <ArrowIcon />
             </Link>
           </div>
         </section>

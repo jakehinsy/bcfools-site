@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { ArrowIcon } from "../ArrowIcon";
 import { PoweredByPlatoon } from "../PoweredByPlatoon";
+import { SiteHeader } from "../SiteHeader";
 import styles from "./contact.module.css";
 
 export const metadata: Metadata = {
@@ -10,10 +12,6 @@ export const metadata: Metadata = {
   description:
     "Meet the Brew City F.O.O.L.S. leadership team and reach the right chapter officer for training, membership, dues, or general questions.",
 };
-
-function Arrow() {
-  return <span aria-hidden="true">&nearr;</span>;
-}
 
 function MailIcon() {
   return (
@@ -45,43 +43,7 @@ export default function ContactPage() {
         Skip to contact information
       </a>
 
-      <div className={styles.utilityBar}>
-        <div className="shell">
-          {siteConfig.region} <span aria-hidden="true">&bull;</span> Established{" "}
-          {siteConfig.established}
-        </div>
-      </div>
-
-      <header className={styles.header}>
-        <div className={`shell ${styles.headerInner}`}>
-          <Link
-            aria-label="Brew City FOOLS home"
-            className={styles.brand}
-            href="/"
-          >
-            <Image
-              alt=""
-              height={58}
-              priority
-              src="/images/brew-city-fools-logo.png"
-              width={60}
-            />
-            <span>
-              <strong>{siteConfig.shortName}</strong>
-              <small>{siteConfig.motto}</small>
-            </span>
-          </Link>
-          <nav className={styles.pageNav} aria-label="Contact page navigation">
-            <Link href="/about">About</Link>
-            <Link href="/#training">Training</Link>
-            <Link href="/events">Events</Link>
-            <Link href="/join">Join</Link>
-          </nav>
-          <Link className={styles.backLink} href="/">
-            <span aria-hidden="true">&larr;</span> Back to home
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main id="contact-content">
         <section className={styles.hero}>
@@ -131,7 +93,7 @@ export default function ContactPage() {
                   training to your department.
                 </p>
                 <a href={`mailto:${trainingContact.email}`}>
-                  Email training <Arrow />
+                  Email training <ArrowIcon />
                 </a>
               </article>
 
@@ -144,7 +106,7 @@ export default function ContactPage() {
                   record that needs attention.
                 </p>
                 <a href={`mailto:${membershipContact.email}`}>
-                  Email membership <Arrow />
+                  Email membership <ArrowIcon />
                 </a>
               </article>
 
@@ -162,14 +124,14 @@ export default function ContactPage() {
                     rel="noreferrer"
                     target="_blank"
                   >
-                    Facebook <Arrow />
+                    Facebook <ArrowIcon />
                   </a>
                   <a
                     href={siteConfig.links.instagram}
                     rel="noreferrer"
                     target="_blank"
                   >
-                    Instagram <Arrow />
+                    Instagram <ArrowIcon />
                   </a>
                 </div>
               </article>
@@ -258,7 +220,7 @@ export default function ContactPage() {
                     <small>{contact.description}</small>
                   </div>
                   <em>{contact.email}</em>
-                  <Arrow />
+                  <ArrowIcon />
                 </a>
               ))}
             </div>
@@ -272,7 +234,7 @@ export default function ContactPage() {
               <h2>Ready to join the crew?</h2>
             </div>
             <Link href="/join">
-              Start your application <Arrow />
+              Start your application <ArrowIcon />
             </Link>
           </div>
         </section>
