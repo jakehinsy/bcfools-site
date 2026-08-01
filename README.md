@@ -35,6 +35,11 @@ list. Event rendering is driven by the typed shape in `src/data/events.ts`;
 the source remains intentionally empty until an approved public Platoon event
 feed is available.
 
+The `/contact` route merges the legacy Contact and E-Board pages into a single
+leadership and role-directory experience. Officer names, portraits, and public
+role addresses are configuration-driven, and the legacy `/e-board` path
+redirects permanently to the merged page.
+
 ## Local development
 
 ```bash

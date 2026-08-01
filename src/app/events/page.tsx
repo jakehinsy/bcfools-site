@@ -70,7 +70,7 @@ export default function EventsPage() {
           <nav className={styles.pageNav} aria-label="Events page navigation">
             <Link href="/#training">Training</Link>
             <Link href="/join">Join</Link>
-            <Link href="/#contact">Contact</Link>
+            <Link href="/contact">Contact</Link>
           </nav>
           <Link className={styles.backLink} href="/">
             <span aria-hidden="true">&larr;</span> Back to home
@@ -144,13 +144,11 @@ export default function EventsPage() {
               <p>Have a class in mind?</p>
               <h2>Bring training our way.</h2>
             </div>
-            <a
+            <Link
               href={siteConfig.links.contact}
-              rel="noreferrer"
-              target="_blank"
             >
               Talk to Brew City <span aria-hidden="true">&nearr;</span>
-            </a>
+            </Link>
           </div>
         </section>
       </main>

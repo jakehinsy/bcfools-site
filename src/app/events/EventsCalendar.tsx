@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import {
   eventCategories,
@@ -306,13 +307,9 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                 >
                   Follow for updates <span aria-hidden="true">&nearr;</span>
                 </a>
-                <a
-                  href={siteConfig.links.contact}
-                  rel="noreferrer"
-                  target="_blank"
-                >
+                <Link href={siteConfig.links.contact}>
                   Ask about an event
-                </a>
+                </Link>
               </div>
             </div>
           )}

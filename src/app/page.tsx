@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { PoweredByPlatoon } from "./PoweredByPlatoon";
 
@@ -222,14 +223,12 @@ export default function Home() {
                 <li>Instructors who teach from experience, not a script</li>
                 <li>Room for every rank to learn, teach, and ask questions</li>
               </ul>
-              <a
+              <Link
                 className="text-link"
                 href={siteConfig.links.contact}
-                target="_blank"
-                rel="noreferrer"
               >
                 Bring training to your department <Arrow />
-              </a>
+              </Link>
             </div>
           </div>
         </section>
@@ -263,14 +262,12 @@ export default function Home() {
                 >
                   Open the calendar <Arrow />
                 </a>
-                <a
+                <Link
                   className="text-link text-link--light"
                   href={siteConfig.links.contact}
-                  target="_blank"
-                  rel="noreferrer"
                 >
                   Bring a class our way
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -321,14 +318,12 @@ export default function Home() {
               <p className="eyebrow eyebrow--light">Say hello</p>
               <h2>Want to train, host a class, or meet the crew?</h2>
             </div>
-            <a
+            <Link
               className="button button--light"
               href={siteConfig.links.contact}
-              target="_blank"
-              rel="noreferrer"
             >
               Talk to Brew City <Arrow />
-            </a>
+            </Link>
           </div>
         </section>
       </main>
@@ -373,13 +368,9 @@ export default function Home() {
             >
               Instagram
             </a>
-            <a
-              href={siteConfig.links.contact}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <Link href={siteConfig.links.contact}>
               Contact
-            </a>
+            </Link>
           </div>
         </div>
 

@@ -4,6 +4,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  async redirects() {
+    return [
+      {
+        source: "/e-board",
+        destination: "/contact",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
