@@ -1,14 +1,20 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
+import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import type { PlatoonConnectionSummary } from "@/lib/platoonMembership";
 import styles from "./join.module.css";
 
 type ApplicationType = "new" | "renewal";
 type SubmissionState =
   | { status: "idle" }
   | { status: "submitting" }
-  | { status: "success"; applicationReference: string }
+  | {
+      status: "success";
+      applicationReference: string;
+      nextAction: "await_review" | "check_email";
+    }
   | { status: "error"; message: string };
 
 const stateOptions = [
@@ -20,14 +26,23 @@ const stateOptions = [
 ] as const;
 
 export function MembershipApplicationForm({
+  connectionStatus,
   defaultType,
+  initialConnection,
+  platoonSignInAvailable,
 }: {
+  connectionStatus: "connected" | "error" | "unavailable" | null;
   defaultType: ApplicationType;
+  initialConnection: PlatoonConnectionSummary | null;
+  platoonSignInAvailable: boolean;
 }) {
   const [applicationType, setApplicationType] =
     useState<ApplicationType>(defaultType);
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
   const submissionId = useRef<string | null>(null);
+  const nameParts = initialConnection?.profile.fullName?.trim().split(/\s+/) ?? [];
+  const initialFirstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0] ?? "";
+  const initialLastName = nameParts.length > 1 ? nameParts.at(-1) ?? "" : "";
 
   const price =
     applicationType === "new"
@@ -56,7 +71,7 @@ export function MembershipApplicationForm({
         body: JSON.stringify({
           submissionId: currentSubmissionId,
           application: {
-            schemaVersion: "2026-07-31",
+            schemaVersion: "2026-08-02",
             applicationType,
             applicant: {
               firstName: formData.get("firstName"),
@@ -75,15 +90,26 @@ export function MembershipApplicationForm({
             attestations: {
               adultFirefighter: formData.get("attestation") === "on",
             },
+            communications: {
+              sms: {
+                consent: formData.get("smsConsent") === "on",
+                disclosureVersion: siteConfig.membership.smsConsent.version,
+              },
+            },
           },
         }),
       });
       const result = (await response.json()) as {
         applicationReference?: string;
+        nextAction?: "await_review" | "check_email";
         error?: { code?: string };
       };
 
-      if (!response.ok || !result.applicationReference) {
+      if (
+        !response.ok ||
+        !result.applicationReference ||
+        (result.nextAction !== "await_review" && result.nextAction !== "check_email")
+      ) {
         const message =
           result.error?.code === "RATE_LIMITED"
             ? "The test system is busy right now. Please wait a minute and try again."
@@ -94,7 +120,11 @@ export function MembershipApplicationForm({
         return;
       }
 
-      setSubmission({ status: "success", applicationReference: result.applicationReference });
+      setSubmission({
+        status: "success",
+        applicationReference: result.applicationReference,
+        nextAction: result.nextAction,
+      });
       form.reset();
     } catch {
       setSubmission({
@@ -105,7 +135,48 @@ export function MembershipApplicationForm({
   }
 
   return (
-    <form className={styles.form} onChange={resetAttempt} onSubmit={handleSubmit}>
+    <>
+      <section className={styles.platoonConnection} aria-labelledby="platoon-connection-title">
+        {initialConnection ? (
+          <div className={styles.connectionConfirmed}>
+            <span aria-hidden="true">&#10003;</span>
+            <div>
+              <strong id="platoon-connection-title">Platoon account connected</strong>
+              <p>
+                Signed in as {initialConnection.verifiedEmail}. We&apos;ll use this verified
+                email and prefill available profile details for you to review.
+              </p>
+            </div>
+            <a href="/api/platoon/connect/clear">Use another account</a>
+          </div>
+        ) : (
+          <div className={styles.connectionPrompt}>
+            <div>
+              <strong id="platoon-connection-title">Already use Platoon?</strong>
+              <p>Sign in to verify your email and prefill available profile details.</p>
+            </div>
+            {platoonSignInAvailable ? (
+              <a href={`/api/platoon/connect/start?type=${applicationType}`}>
+                Sign in with Platoon
+              </a>
+            ) : (
+              <span>Sign-in connection pending</span>
+            )}
+          </div>
+        )}
+        {!initialConnection && connectionStatus === "error" ? (
+          <p className={styles.connectionError} role="alert">
+            We couldn&apos;t connect that Platoon account. Try again or continue with the application.
+          </p>
+        ) : null}
+        {!initialConnection && connectionStatus === "unavailable" ? (
+          <p className={styles.connectionError} role="status">
+            Platoon sign-in is temporarily unavailable. You can still complete the application.
+          </p>
+        ) : null}
+      </section>
+
+      <form className={styles.form} onChange={resetAttempt} onSubmit={handleSubmit}>
       <div className={styles.previewNotice} role="note">
         <strong>Staging preview</strong>
         <p>
@@ -166,15 +237,33 @@ export function MembershipApplicationForm({
         <div className={styles.fieldGrid}>
           <label className={styles.field}>
             <span>First name</span>
-            <input autoComplete="given-name" name="firstName" required />
+            <input
+              autoComplete="given-name"
+              defaultValue={initialFirstName}
+              name="firstName"
+              required
+            />
           </label>
           <label className={styles.field}>
             <span>Last name</span>
-            <input autoComplete="family-name" name="lastName" required />
+            <input
+              autoComplete="family-name"
+              defaultValue={initialLastName}
+              name="lastName"
+              required
+            />
           </label>
           <label className={styles.field}>
             <span>Email address</span>
-            <input autoComplete="email" name="email" required type="email" />
+            <input
+              autoComplete="email"
+              defaultValue={initialConnection?.verifiedEmail ?? ""}
+              name="email"
+              readOnly={Boolean(initialConnection)}
+              required
+              type="email"
+            />
+            {initialConnection ? <small>Verified by Platoon</small> : null}
           </label>
           <label className={styles.field}>
             <span>Phone number</span>
@@ -191,7 +280,11 @@ export function MembershipApplicationForm({
         <div className={styles.fieldGrid}>
           <label className={`${styles.field} ${styles.fieldWide}`}>
             <span>Fire department</span>
-            <input name="fireDepartment" required />
+            <input
+              defaultValue={initialConnection?.profile.departmentName ?? ""}
+              name="fireDepartment"
+              required
+            />
           </label>
           <label className={styles.field}>
             <span>Department state</span>
@@ -205,7 +298,7 @@ export function MembershipApplicationForm({
           </label>
           <label className={styles.field}>
             <span>Current or last-held rank</span>
-            <input name="rank" required />
+            <input defaultValue={initialConnection?.profile.rank ?? ""} name="rank" required />
           </label>
           <label className={styles.field}>
             <span>Fire service status</span>
@@ -240,6 +333,19 @@ export function MembershipApplicationForm({
             to review my membership and contact me about it.
           </span>
         </label>
+        <div className={styles.smsConsent}>
+          <input id="smsConsent" name="smsConsent" type="checkbox" />
+          <span className={styles.smsConsentCopy}>
+            <label htmlFor="smsConsent">
+              <strong>Optional text updates</strong>
+              <span>{siteConfig.membership.smsConsent.disclosure}</span>
+            </label>
+            <small>
+              Review our <Link href={siteConfig.links.privacy}>Privacy Policy</Link>
+              {" "}and <Link href={siteConfig.links.terms}>Terms of Use</Link>.
+            </small>
+          </span>
+        </div>
       </fieldset>
 
       <div className={styles.checkoutSummary}>
@@ -269,7 +375,10 @@ export function MembershipApplicationForm({
         <div className={styles.previewResult} role="status" tabIndex={-1}>
           <strong>Test application received.</strong>
           <p>
-            Platoon saved this application for chapter review. No payment was
+            {submission.nextAction === "check_email"
+              ? "Check your email for the secure Platoon activation or sign-in step. "
+              : "Your verified Platoon account is connected to this application. "}
+            The chapter review and payment steps remain separate. No payment was
             requested or charged. Test reference: {submission.applicationReference}
           </p>
         </div>
@@ -289,6 +398,7 @@ export function MembershipApplicationForm({
         </a>
         .
       </p>
-    </form>
+      </form>
+    </>
   );
 }

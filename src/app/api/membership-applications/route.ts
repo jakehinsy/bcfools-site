@@ -1,13 +1,18 @@
-import { createHash, createHmac, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
+import { siteConfig } from "@/config/site";
+import {
+  APPLICATION_SCHEMA_VERSION,
+  APPLICATION_SIGNATURE_PATH,
+  CONNECTION_COOKIE,
+  intakeConfiguration,
+  readConnection,
+  signedProgramHeaders,
+} from "@/lib/platoonMembership";
 
 export const runtime = "nodejs";
 
-const SCHEMA_VERSION = "2026-07-31";
-const SIGNATURE_PATH = "/api/public/membership-applications";
 const MAX_REQUEST_BYTES = 16_384;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PROGRAM_KEY_PATTERN = /^mpk_[A-Za-z0-9_-]{12,80}$/;
 
 type ApplicationPayload = {
   schemaVersion: string;
@@ -22,6 +27,10 @@ type ApplicationPayload = {
     foolsId: string | null;
   };
   attestations: { adultFirefighter: true };
+  accountConnection?: { receipt: string };
+  communications: {
+    sms: { consent: boolean; disclosureVersion: string };
+  };
 };
 
 type SubmissionBody = { submissionId: string; application: ApplicationPayload };
@@ -44,7 +53,9 @@ function parseSubmission(value: unknown): SubmissionBody | null {
   const applicant = application?.applicant as Record<string, unknown> | undefined;
   const fireService = application?.fireService as Record<string, unknown> | undefined;
   const attestations = application?.attestations as Record<string, unknown> | undefined;
-  if (!application || !applicant || !fireService || !attestations) return null;
+  const communications = application?.communications as Record<string, unknown> | undefined;
+  const sms = communications?.sms as Record<string, unknown> | undefined;
+  if (!application || !applicant || !fireService || !attestations || !sms) return null;
 
   const submissionId = requiredString(root.submissionId, 36);
   const firstName = requiredString(applicant.firstName, 100);
@@ -60,7 +71,7 @@ function parseSubmission(value: unknown): SubmissionBody | null {
   if (
     !submissionId ||
     !UUID_PATTERN.test(submissionId) ||
-    application.schemaVersion !== SCHEMA_VERSION ||
+    application.schemaVersion !== APPLICATION_SCHEMA_VERSION ||
     (application.applicationType !== "new" && application.applicationType !== "renewal") ||
     !firstName ||
     !lastName ||
@@ -74,13 +85,15 @@ function parseSubmission(value: unknown): SubmissionBody | null {
     (fireService.status !== "active" && fireService.status !== "retired") ||
     previousChapter === undefined ||
     foolsId === undefined ||
-    attestations.adultFirefighter !== true
+    attestations.adultFirefighter !== true ||
+    typeof sms.consent !== "boolean" ||
+    sms.disclosureVersion !== siteConfig.membership.smsConsent.version
   ) return null;
 
   return {
     submissionId,
     application: {
-      schemaVersion: SCHEMA_VERSION,
+      schemaVersion: APPLICATION_SCHEMA_VERSION,
       applicationType: application.applicationType,
       applicant: { firstName, lastName, email, phone },
       fireService: {
@@ -92,53 +105,13 @@ function parseSubmission(value: unknown): SubmissionBody | null {
         foolsId,
       },
       attestations: { adultFirefighter: true },
+      communications: {
+        sms: {
+          consent: sms.consent,
+          disclosureVersion: siteConfig.membership.smsConsent.version,
+        },
+      },
     },
-  };
-}
-
-function intakeConfiguration() {
-  const endpointValue = process.env.PLATOON_MEMBERSHIP_INTAKE_URL?.trim();
-  const programKeyId = process.env.PLATOON_MEMBERSHIP_PROGRAM_KEY?.trim();
-  const secret = process.env.PLATOON_MEMBERSHIP_PROGRAM_SECRET?.trim();
-  const bypassSecret = process.env.PLATOON_MEMBERSHIP_INTAKE_BYPASS_SECRET?.trim();
-  if (
-    !endpointValue ||
-    !programKeyId ||
-    !PROGRAM_KEY_PATTERN.test(programKeyId) ||
-    !secret ||
-    !bypassSecret
-  ) {
-    throw new Error("Membership intake is not configured.");
-  }
-  const endpoint = new URL(endpointValue);
-  if (endpoint.protocol !== "https:" || endpoint.pathname !== SIGNATURE_PATH) {
-    throw new Error("Membership intake endpoint is invalid.");
-  }
-  return { endpoint, programKeyId, secret, bypassSecret };
-}
-
-function signedHeaders(
-  rawBody: string,
-  submissionId: string,
-  programKeyId: string,
-  secret: string,
-  bypassSecret: string,
-) {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = randomBytes(24).toString("base64url");
-  const bodyHash = createHash("sha256").update(rawBody).digest("hex");
-  const canonicalInput = [
-    "v1", "POST", SIGNATURE_PATH, programKeyId, submissionId, timestamp, nonce, bodyHash,
-  ].join("\n");
-  const signature = createHmac("sha256", secret).update(canonicalInput).digest("base64url");
-  return {
-    "Content-Type": "application/json",
-    "Idempotency-Key": submissionId,
-    "X-Platoon-Program-Key": programKeyId,
-    "X-Platoon-Timestamp": timestamp,
-    "X-Platoon-Nonce": nonce,
-    "X-Platoon-Signature": `v1=${signature}`,
-    "x-vercel-protection-bypass": bypassSecret,
   };
 }
 
@@ -171,16 +144,34 @@ export async function POST(request: Request) {
     }
 
     const { endpoint, programKeyId, secret, bypassSecret } = intakeConfiguration();
-    const rawBody = JSON.stringify(submission.application);
+    const cookieHeader = request.headers.get("cookie") ?? "";
+    const connectionCookie = cookieHeader
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${CONNECTION_COOKIE}=`))
+      ?.slice(CONNECTION_COOKIE.length + 1);
+    const connection = readConnection(connectionCookie, secret);
+    const application: ApplicationPayload = connection
+      ? {
+          ...submission.application,
+          applicant: {
+            ...submission.application.applicant,
+            email: connection.verifiedEmail,
+          },
+          accountConnection: { receipt: connection.receipt },
+        }
+      : submission.application;
+    const rawBody = JSON.stringify(application);
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: signedHeaders(
+      headers: signedProgramHeaders({
         rawBody,
-        submission.submissionId,
+        idempotencyKey: submission.submissionId,
+        path: APPLICATION_SIGNATURE_PATH,
         programKeyId,
         secret,
         bypassSecret,
-      ),
+      }),
       body: rawBody,
       cache: "no-store",
       redirect: "error",
@@ -196,19 +187,23 @@ export async function POST(request: Request) {
       typeof result.applicationReference !== "string" ||
       result.reviewStatus !== "submitted" ||
       result.paymentStatus !== "not_started" ||
-      result.nextAction !== "await_review"
+      (result.nextAction !== "await_review" && result.nextAction !== "check_email") ||
+      typeof result.replayed !== "boolean"
     ) {
       return NextResponse.json({ error: { code: "INTAKE_UNAVAILABLE" } }, { status: 503 });
     }
-    return NextResponse.json(
+    const publicResponse = NextResponse.json(
       {
         applicationReference: result.applicationReference,
         reviewStatus: "submitted",
         paymentStatus: "not_started",
-        nextAction: "await_review",
+        nextAction: result.nextAction,
+        replayed: result.replayed,
       },
       { status: 202 },
     );
+    if (connection) publicResponse.cookies.delete(CONNECTION_COOKIE);
+    return publicResponse;
   } catch {
     return NextResponse.json({ error: { code: "INTAKE_UNAVAILABLE" } }, { status: 503 });
   }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { ArrowIcon } from "../ArrowIcon";
 import { PoweredByPlatoon } from "../PoweredByPlatoon";
+import { LegalLinks } from "../LegalLinks";
 import { SiteHeader } from "../SiteHeader";
 import styles from "./contact.module.css";
 
@@ -245,6 +246,7 @@ export default function ContactPage() {
           <div className={styles.footerChapter}>
             <strong>{siteConfig.name}</strong>
             <span>{siteConfig.motto}</span>
+            <LegalLinks />
           </div>
           <PoweredByPlatoon />
         </div>

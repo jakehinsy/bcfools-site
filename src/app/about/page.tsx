@@ -5,6 +5,7 @@ import { siteConfig } from "@/config/site";
 import { chapterPillars, chapterStory, traditions } from "@/data/about";
 import { ArrowIcon } from "../ArrowIcon";
 import { PoweredByPlatoon } from "../PoweredByPlatoon";
+import { LegalLinks } from "../LegalLinks";
 import { SiteHeader } from "../SiteHeader";
 import styles from "./about.module.css";
 
@@ -221,6 +222,7 @@ export default function AboutPage() {
           <div className={styles.footerChapter}>
             <strong>{siteConfig.name}</strong>
             <span>{siteConfig.motto}</span>
+            <LegalLinks />
           </div>
           <PoweredByPlatoon />
         </div>

@@ -20,14 +20,25 @@ export const siteConfig = {
     international: "https://www.foolsinternational.com/about-us",
     platoon: "https://platoonapp.com",
     memberDashboard: "https://app.platoonapp.com",
+    privacy: "/privacy",
+    terms: "/terms",
     facebook: "https://www.facebook.com/brewcity.fools",
-    instagram: "https://www.instagram.com/brewcityfools/",
+    instagram: "https://www.instagram.com/brewcityf.o.o.l.s/",
   },
   membership: {
     newMemberPrice: 50,
     renewalPrice: 35,
     paymentMode: "one-time",
     reviewRoles: ["Membership Trustee", "President"],
+    smsConsent: {
+      version: "bcfools-sms-2026-08-02",
+      disclosure:
+        "I agree to receive occasional text messages from Brew City FOOLS about time-sensitive chapter, membership, training, and event updates. Message frequency varies. Message and data rates may apply. Reply STOP to unsubscribe or HELP for help. Consent is optional and is not a condition of membership. Mobile information and messaging consent will not be sold or shared with third parties for marketing.",
+    },
+  },
+  legal: {
+    effectiveDate: "August 2, 2026",
+    contactEmail: "brewcitymembership@gmail.com",
   },
   leadership: [
     {

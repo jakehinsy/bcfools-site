@@ -315,6 +315,8 @@ export default function Home() {
             <Link href={siteConfig.links.contact}>
               Contact
             </Link>
+            <Link href={siteConfig.links.privacy}>Privacy</Link>
+            <Link href={siteConfig.links.terms}>Terms</Link>
           </div>
         </div>
 

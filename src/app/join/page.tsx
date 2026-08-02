@@ -1,7 +1,16 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { cookies } from "next/headers";
 import { siteConfig } from "@/config/site";
+import {
+  CONNECTION_COOKIE,
+  connectionIsConfigured,
+  connectionSummary,
+  programCredentials,
+  readConnection,
+} from "@/lib/platoonMembership";
 import { PoweredByPlatoon } from "../PoweredByPlatoon";
+import { LegalLinks } from "../LegalLinks";
 import { SiteHeader } from "../SiteHeader";
 import { MembershipApplicationForm } from "./MembershipApplicationForm";
 import styles from "./join.module.css";
@@ -15,10 +24,27 @@ export const metadata: Metadata = {
 export default async function JoinPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; platoon?: string }>;
 }) {
   const params = await searchParams;
   const defaultType = params.type === "renewal" ? "renewal" : "new";
+  const connectionStatus =
+    params.platoon === "connected" ||
+    params.platoon === "error" ||
+    params.platoon === "unavailable"
+      ? params.platoon
+      : null;
+  let initialConnection = null;
+  try {
+    const cookieStore = await cookies();
+    const connection = readConnection(
+      cookieStore.get(CONNECTION_COOKIE)?.value,
+      programCredentials().secret,
+    );
+    initialConnection = connection ? connectionSummary(connection) : null;
+  } catch {
+    initialConnection = null;
+  }
 
   return (
     <>
@@ -96,7 +122,12 @@ export default async function JoinPage({
                 <h2>Let&apos;s get you started.</h2>
                 <p>Required fields are marked by the browser when you continue.</p>
               </div>
-              <MembershipApplicationForm defaultType={defaultType} />
+              <MembershipApplicationForm
+                connectionStatus={connectionStatus}
+                defaultType={defaultType}
+                initialConnection={initialConnection}
+                platoonSignInAvailable={connectionIsConfigured()}
+              />
             </div>
           </div>
         </section>
@@ -107,6 +138,7 @@ export default async function JoinPage({
           <div className={styles.footerChapter}>
             <strong>{siteConfig.name}</strong>
             <span>{siteConfig.motto}</span>
+            <LegalLinks />
           </div>
           <PoweredByPlatoon />
         </div>

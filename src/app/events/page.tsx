@@ -5,6 +5,7 @@ import { siteConfig } from "@/config/site";
 import { publicEvents } from "@/data/events";
 import { ArrowIcon } from "../ArrowIcon";
 import { PoweredByPlatoon } from "../PoweredByPlatoon";
+import { LegalLinks } from "../LegalLinks";
 import { SiteHeader } from "../SiteHeader";
 import { EventsCalendar } from "./EventsCalendar";
 import styles from "./events.module.css";
@@ -125,6 +126,7 @@ export default function EventsPage() {
           <div className={styles.footerChapter}>
             <strong>{siteConfig.name}</strong>
             <span>{siteConfig.motto}</span>
+            <LegalLinks />
           </div>
           <PoweredByPlatoon />
         </div>

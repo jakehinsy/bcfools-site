@@ -1,0 +1,27 @@
+.links {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.links a {
+  color: rgb(255 255 255 / 62%);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  text-decoration-color: rgb(255 255 255 / 26%);
+  text-underline-offset: 3px;
+  transition: color 160ms ease, text-decoration-color 160ms ease;
+}
+
+.links a:hover {
+  color: var(--white);
+  text-decoration-color: currentColor;
+}
+
+.links a:focus-visible {
+  outline: 3px solid #f0b323;
+  outline-offset: 3px;
+}
