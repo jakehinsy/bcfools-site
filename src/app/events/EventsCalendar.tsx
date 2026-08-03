@@ -73,6 +73,39 @@ function CalendarIcon() {
   );
 }
 
+function EventCardContent({ event }: { event: PublicEvent }) {
+  const date = eventDate(event);
+  return (
+    <>
+      <div className={styles.eventDate}>
+        <span>{date.toLocaleDateString("en-US", { weekday: "short" })}</span>
+        <strong>{date.getDate()}</strong>
+        <small>{date.toLocaleDateString("en-US", { month: "short" })}</small>
+      </div>
+      <div className={styles.eventCardBody}>
+        <p className={styles.eventCategory}>
+          <i
+            aria-hidden="true"
+            style={{ backgroundColor: event.category.color }}
+          />
+          {event.category.label}
+        </p>
+        <h3>{event.title}</h3>
+        {event.summary && (
+          <p className={styles.eventSummary}>{event.summary}</p>
+        )}
+        {event.location && <span>{event.location}</span>}
+        <span>{publicEventTimeLabel(event)}</span>
+      </div>
+      {event.externalUrl && (
+        <span className={styles.eventAction}>
+          View event <ArrowIcon />
+        </span>
+      )}
+    </>
+  );
+}
+
 export function EventsCalendar({
   calendarTimeZone,
   events,
@@ -296,33 +329,23 @@ export function EventsCalendar({
           {upcomingEvents.length > 0 ? (
             <div className={styles.eventCards}>
               {upcomingEvents.slice(0, 5).map((event) => {
-                const date = eventDate(event);
+                if (event.externalUrl) {
+                  return (
+                    <a
+                      aria-label={`${event.title}: open external event page in a new tab`}
+                      className={`${styles.eventCard} ${styles.eventCardLinked}`}
+                      href={event.externalUrl}
+                      key={event.id}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <EventCardContent event={event} />
+                    </a>
+                  );
+                }
                 return (
                   <article className={styles.eventCard} key={event.id}>
-                    <div className={styles.eventDate}>
-                      <span>
-                        {date.toLocaleDateString("en-US", { weekday: "short" })}
-                      </span>
-                      <strong>{date.getDate()}</strong>
-                      <small>
-                        {date.toLocaleDateString("en-US", { month: "short" })}
-                      </small>
-                    </div>
-                    <div className={styles.eventCardBody}>
-                      <p className={styles.eventCategory}>
-                        <i
-                          aria-hidden="true"
-                          style={{ backgroundColor: event.category.color }}
-                        />
-                        {event.category.label}
-                      </p>
-                      <h3>{event.title}</h3>
-                      {event.summary && (
-                        <p className={styles.eventSummary}>{event.summary}</p>
-                      )}
-                      {event.location && <span>{event.location}</span>}
-                      <span>{publicEventTimeLabel(event)}</span>
-                    </div>
+                    <EventCardContent event={event} />
                   </article>
                 );
               })}

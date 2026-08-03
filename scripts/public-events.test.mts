@@ -23,6 +23,7 @@ const publicEvent = {
   eventKey: "00000000-0000-0000-0000-000000000001",
   title: "Hands-on training",
   summary: "Public event summary",
+  externalUrl: "https://example.org/register?class=rit",
   startsAt: "2026-08-10T14:00:00.000Z",
   endsAt: "2026-08-10T16:00:00.000Z",
   allDay: false,
@@ -51,6 +52,7 @@ test("parses only the bounded public organization-event contract", () => {
         eventKey: publicEvent.eventKey,
         title: publicEvent.title,
         summary: publicEvent.summary,
+        externalUrl: publicEvent.externalUrl,
         startsAt: publicEvent.startsAt,
         endsAt: publicEvent.endsAt,
         allDay: false,
@@ -93,6 +95,40 @@ test("fails closed on the wrong tenant or malformed event fields", () => {
     ...payload,
     events: [{ ...publicEvent, eventKey: "not-a-uuid" }],
   }, "brew-city-fools"), null);
+  for (const externalUrl of [
+    undefined,
+    "http://example.org/register",
+    "javascript:alert(1)",
+    "/register",
+    "https://member:secret@example.org/register",
+    `https://example.org/${"é".repeat(400)}`,
+    `https://example.org/${"x".repeat(2049)}`,
+  ]) {
+    assert.equal(parsePublicOrganizationEventsPayload({
+      ...payload,
+      events: [{ ...publicEvent, externalUrl }],
+    }, "brew-city-fools"), null);
+  }
+});
+
+test("accepts a nullable, credential-free HTTPS external event URL", () => {
+  const payload = {
+    organizationSlug: "brew-city-fools",
+    ...range,
+    events: [{ ...publicEvent, externalUrl: null }],
+  };
+  assert.equal(
+    parsePublicOrganizationEventsPayload(payload, "brew-city-fools")
+      ?.events[0]?.externalUrl,
+    null,
+  );
+  assert.equal(
+    parsePublicOrganizationEventsPayload({
+      ...payload,
+      events: [{ ...publicEvent, externalUrl: "  https://example.org/register  " }],
+    }, "brew-city-fools")?.events[0]?.externalUrl,
+    "https://example.org/register",
+  );
 });
 
 test("accepts an event that begins before the range and continues into it", () => {
@@ -158,6 +194,7 @@ test("maps public details and tenant category overrides into the website shape",
     id: publicEvent.eventKey,
     title: "Hands-on training",
     summary: "Public event summary",
+    externalUrl: publicEvent.externalUrl,
     startsAt: publicEvent.startsAt,
     endsAt: publicEvent.endsAt,
     allDay: false,
@@ -176,6 +213,7 @@ test("formats all-day, legacy, timezone-aware, and multi-day events canonically"
     id: publicEvent.eventKey,
     title: publicEvent.title,
     summary: null,
+    externalUrl: null,
     startsAt: "2026-08-10T00:00:00.000Z",
     endsAt: "2026-08-10T23:59:59.999Z",
     allDay: true,

@@ -10,6 +10,7 @@ export type PublicEvent = {
   id: string;
   title: string;
   summary: string | null;
+  externalUrl: string | null;
   startsAt: string;
   endsAt: string | null;
   allDay: boolean;
@@ -105,6 +106,7 @@ export function websiteEventsFromPlatoon(
       id: event.eventKey,
       title: event.title,
       summary: event.summary,
+      externalUrl: event.externalUrl,
       startsAt: event.startsAt,
       endsAt: event.endsAt,
       allDay: event.allDay,

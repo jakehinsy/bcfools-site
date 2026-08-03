@@ -2,6 +2,7 @@ export type PlatoonPublicOrganizationEvent = {
   eventKey: string;
   title: string;
   summary: string | null;
+  externalUrl: string | null;
   startsAt: string;
   endsAt: string | null;
   allDay: boolean;
@@ -66,6 +67,23 @@ function timeZone(value: unknown): string | null {
   }
 }
 
+function externalUrl(value: unknown): string | null {
+  const candidate = optionalString(value, 2048);
+  if (candidate === null) return null;
+  try {
+    const url = new URL(candidate);
+    const normalized = url.toString();
+    return url.protocol === "https:" &&
+        !url.username &&
+        !url.password &&
+        normalized.length <= 2048
+      ? normalized
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
   const event = record(value);
   if (!event) return null;
@@ -73,6 +91,7 @@ function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
   const eventKey = uuid(event.eventKey);
   const title = requiredString(event.title, 200);
   const summary = optionalString(event.summary, 500);
+  const eventExternalUrl = externalUrl(event.externalUrl);
   const startsAt = isoTimestamp(event.startsAt);
   const endsAt = event.endsAt === null ? null : isoTimestamp(event.endsAt);
   const eventTimeZone = timeZone(event.timeZone);
@@ -87,6 +106,7 @@ function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
     !eventKey ||
     !title ||
     (event.summary !== null && !summary) ||
+    (event.externalUrl !== null && !eventExternalUrl) ||
     !startsAt ||
     (event.endsAt !== null && !endsAt) ||
     (endsAt && new Date(endsAt) < new Date(startsAt)) ||
@@ -106,6 +126,7 @@ function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
     eventKey,
     title,
     summary,
+    externalUrl: eventExternalUrl,
     startsAt,
     endsAt,
     allDay: event.allDay,
