@@ -48,8 +48,6 @@ test("a callback from browser A is rejected in browser B", { timeout: 30_000 }, 
       cwd: repositoryRoot,
       env: {
         ...process.env,
-        NEXT_TEST_WASM: "1",
-        NEXT_TEST_WASM_DIR: path.join(repositoryRoot, "node_modules", "@next", "swc-wasm-nodejs"),
         NODE_ENV: "production",
         PLATOON_MEMBERSHIP_CONNECTION_AUTHORIZE_URL: "https://example.test/membership-connect/authorize",
         PLATOON_MEMBERSHIP_CONNECTION_EXCHANGE_URL: "https://127.0.0.1:9/api/public/membership-connections/exchange",
