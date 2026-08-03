@@ -40,17 +40,36 @@ function validConnectionRedirect(value: unknown): value is string {
   return typeof value === "string" && /^\/join\?(?:[^#]*&)?platoon=(?:connected|error)(?:[&#]|$)/.test(value);
 }
 
+async function beginPlatoonConnection(
+  connectionOrigin: string,
+  applicationType: ApplicationType,
+) {
+  const browserBinding = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(32)));
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(browserBinding),
+  );
+  const browserBindingHash = bytesToBase64Url(new Uint8Array(digest));
+  sessionStorage.setItem(CONNECTION_BINDING_STORAGE_KEY, browserBinding);
+  const start = new URL("/api/platoon/connect/start", connectionOrigin);
+  start.searchParams.set("type", applicationType);
+  start.searchParams.set("binding", browserBindingHash);
+  window.location.assign(start);
+}
+
 export function MembershipApplicationForm({
   connectionSupportReference,
   connectionStatus,
   defaultType,
   initialConnection,
+  platoonConnectionOrigin,
   platoonSignInAvailable,
 }: {
   connectionSupportReference: string | null;
   connectionStatus: "connected" | "error" | "unavailable" | null;
   defaultType: ApplicationType;
   initialConnection: PlatoonConnectionSummary | null;
+  platoonConnectionOrigin: string | null;
   platoonSignInAvailable: boolean;
 }) {
   const [applicationType, setApplicationType] =
@@ -68,57 +87,85 @@ export function MembershipApplicationForm({
       : siteConfig.membership.renewalPrice;
 
   useEffect(() => {
-    if (!window.location.hash.startsWith(CONNECTION_HANDOFF_PREFIX)) return;
-    const encoded = window.location.hash.slice(CONNECTION_HANDOFF_PREFIX.length);
-    const browserBinding = sessionStorage.getItem(CONNECTION_BINDING_STORAGE_KEY) ?? "";
-    sessionStorage.removeItem(CONNECTION_BINDING_STORAGE_KEY);
-    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#application`);
+    if (window.location.hash.startsWith(CONNECTION_HANDOFF_PREFIX)) {
+      const encoded = window.location.hash.slice(CONNECTION_HANDOFF_PREFIX.length);
+      const browserBinding = sessionStorage.getItem(CONNECTION_BINDING_STORAGE_KEY) ?? "";
+      sessionStorage.removeItem(CONNECTION_BINDING_STORAGE_KEY);
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#application`);
 
-    let handoff: { code?: unknown; state?: unknown } = {};
-    try {
-      const base64 = encoded.replaceAll("-", "+").replaceAll("_", "/");
-      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-      handoff = JSON.parse(atob(padded)) as { code?: unknown; state?: unknown };
-    } catch {
-      handoff = {};
+      let handoff: { code?: unknown; state?: unknown } = {};
+      try {
+        const base64 = encoded.replaceAll("-", "+").replaceAll("_", "/");
+        const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+        handoff = JSON.parse(atob(padded)) as { code?: unknown; state?: unknown };
+      } catch {
+        handoff = {};
+      }
+
+      void fetch("/api/platoon/connect/callback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          browserBinding,
+          code: handoff.code,
+          state: handoff.state,
+        }),
+        cache: "no-store",
+        credentials: "same-origin",
+      })
+        .then(async (response) => response.json() as Promise<{ redirectTo?: unknown }>)
+        .then((result) => {
+          if (!validConnectionRedirect(result.redirectTo)) throw new Error("Invalid redirect.");
+          window.location.replace(result.redirectTo);
+        })
+        .catch(() => {
+          window.location.replace("/join?platoon=error#application");
+        });
+      return;
     }
 
-    void fetch("/api/platoon/connect/callback", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        browserBinding,
-        code: handoff.code,
-        state: handoff.state,
-      }),
-      cache: "no-store",
-      credentials: "same-origin",
-    })
-      .then(async (response) => response.json() as Promise<{ redirectTo?: unknown }>)
-      .then((result) => {
-        if (!validConnectionRedirect(result.redirectTo)) throw new Error("Invalid redirect.");
-        window.location.replace(result.redirectTo);
-      })
-      .catch(() => {
-        window.location.replace("/join?platoon=error#application");
-      });
-  }, []);
+    const search = new URLSearchParams(window.location.search);
+    if (search.get("platoon_start") !== "1" || !platoonConnectionOrigin) return;
+    if (window.location.origin !== platoonConnectionOrigin) {
+      const canonicalJoin = new URL("/join", platoonConnectionOrigin);
+      canonicalJoin.searchParams.set("type", applicationType);
+      canonicalJoin.searchParams.set("platoon_start", "1");
+      canonicalJoin.hash = "application";
+      window.location.replace(canonicalJoin);
+      return;
+    }
+
+    search.delete("platoon_start");
+    const cleanedSearch = search.toString();
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${cleanedSearch ? `?${cleanedSearch}` : ""}#application`,
+    );
+    void beginPlatoonConnection(platoonConnectionOrigin, applicationType).catch(() => {
+      sessionStorage.removeItem(CONNECTION_BINDING_STORAGE_KEY);
+      window.location.assign(`/join?platoon=unavailable&type=${applicationType}#application`);
+    });
+  }, [applicationType, platoonConnectionOrigin]);
 
   async function handlePlatoonSignIn(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     if (connectionStarting) return;
     setConnectionStarting(true);
+    if (!platoonConnectionOrigin) {
+      setConnectionStarting(false);
+      return;
+    }
     try {
-      const browserBinding = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(32)));
-      const digest = await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(browserBinding),
-      );
-      const browserBindingHash = bytesToBase64Url(new Uint8Array(digest));
-      sessionStorage.setItem(CONNECTION_BINDING_STORAGE_KEY, browserBinding);
-      window.location.assign(
-        `/api/platoon/connect/start?type=${applicationType}&binding=${browserBindingHash}`,
-      );
+      if (window.location.origin !== platoonConnectionOrigin) {
+        const canonicalJoin = new URL("/join", platoonConnectionOrigin);
+        canonicalJoin.searchParams.set("type", applicationType);
+        canonicalJoin.searchParams.set("platoon_start", "1");
+        canonicalJoin.hash = "application";
+        window.location.assign(canonicalJoin);
+        return;
+      }
+      await beginPlatoonConnection(platoonConnectionOrigin, applicationType);
     } catch {
       sessionStorage.removeItem(CONNECTION_BINDING_STORAGE_KEY);
       setConnectionStarting(false);

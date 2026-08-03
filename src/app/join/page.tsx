@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { siteConfig } from "@/config/site";
 import {
   CONNECTION_COOKIE,
-  connectionIsConfigured,
+  connectionConfiguration,
   connectionSummary,
   programCredentials,
   readConnection,
@@ -45,6 +45,7 @@ export default async function JoinPage({
     ? rawConnectionSupportReference
     : null;
   let initialConnection = null;
+  let platoonConnectionOrigin: string | null = null;
   try {
     const cookieStore = await cookies();
     const connection = readConnection(
@@ -54,6 +55,11 @@ export default async function JoinPage({
     initialConnection = connection ? connectionSummary(connection) : null;
   } catch {
     initialConnection = null;
+  }
+  try {
+    platoonConnectionOrigin = connectionConfiguration().returnUrl.origin;
+  } catch {
+    platoonConnectionOrigin = null;
   }
 
   return (
@@ -137,7 +143,8 @@ export default async function JoinPage({
                 connectionStatus={connectionStatus}
                 defaultType={defaultType}
                 initialConnection={initialConnection}
-                platoonSignInAvailable={connectionIsConfigured()}
+                platoonConnectionOrigin={platoonConnectionOrigin}
+                platoonSignInAvailable={Boolean(platoonConnectionOrigin)}
               />
             </div>
           </div>

@@ -113,15 +113,6 @@ export function connectionConfiguration() {
   };
 }
 
-export function connectionIsConfigured(): boolean {
-  try {
-    connectionConfiguration();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export function signedProgramHeaders({
   rawBody,
   idempotencyKey,
