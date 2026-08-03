@@ -445,7 +445,11 @@ export function MembershipApplicationForm({
           </label>
           <label className={styles.field}>
             <span>Fire service status</span>
-            <select defaultValue="" name="fireServiceStatus" required>
+            <select
+              defaultValue={initialValues.fireServiceStatus}
+              name="fireServiceStatus"
+              required
+            >
               <option disabled value="">
                 Choose one
               </option>

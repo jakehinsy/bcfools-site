@@ -32,10 +32,10 @@ binds the callback to a nonce held only in the initiating browser session. The
 single-use connection receipt is stored only in an encrypted, `HttpOnly`
 cookie. The browser form receives the verified email and approved profile
 prefill. That prefill is limited to canonical full name plus the phone,
-department name/state, and rank attached to a current approved department
-relationship; department/contact fields remain empty when no such relationship
-exists. The browser never receives the verifier, receipt, program secret, or
-internal Platoon identifiers.
+department name/state, rank, and active/retired fire-service status attached to
+a current approved department relationship. Unknown or unavailable values stay
+empty, and all prefilled application fields remain editable. The browser never
+receives the verifier, receipt, program secret, or internal Platoon identifiers.
 Applicants who do not connect an account receive Platoon's secure activation
 or sign-in email after intake; no password is collected by the public website.
 

@@ -7,6 +7,7 @@ export type PlatoonExchangeConnection = {
     departmentName: string | null;
     departmentState: string | null;
     rank: string | null;
+    fireServiceStatus: "active" | "retired" | null;
   };
   receipt: string;
 };
@@ -20,13 +21,24 @@ export function membershipFormDefaults(
       ? nameParts.slice(0, -1).join(" ")
       : nameParts[0] ?? "",
     lastName: nameParts.length > 1 ? nameParts.at(-1) ?? "" : "",
-    phone: connection?.profile.phone ?? "",
+    phone: formatPhoneForForm(connection?.profile.phone ?? null),
     departmentName: connection?.profile.departmentName ?? "",
     departmentState: connection
       ? connection.profile.departmentState ?? ""
       : "WI",
     rank: connection?.profile.rank ?? "",
+    fireServiceStatus: connection?.profile.fireServiceStatus ?? "",
   };
+}
+
+export function formatPhoneForForm(phone: string | null): string {
+  if (!phone) return "";
+  const digits = phone.replace(/\D/g, "");
+  const nationalNumber = digits.length === 11 && digits.startsWith("1")
+    ? digits.slice(1)
+    : digits;
+  if (nationalNumber.length !== 10) return phone;
+  return `(${nationalNumber.slice(0, 3)}) ${nationalNumber.slice(3, 6)}-${nationalNumber.slice(6)}`;
 }
 
 function requiredString(value: unknown, maxLength: number): string | null {
@@ -62,6 +74,11 @@ export function parsePlatoonExchangeResponse(value: unknown): PlatoonExchangeCon
   const departmentName = department ? requiredString(department.name, 200) : null;
   const departmentState = optionalString(department?.state, 2)?.toUpperCase() ?? null;
   const rank = optionalString(department?.rank, 120);
+  const fireServiceStatusValue = department?.fireServiceStatus;
+  const fireServiceStatus =
+    fireServiceStatusValue === "active" || fireServiceStatusValue === "retired"
+      ? fireServiceStatusValue
+      : null;
 
   if (
     !accountId ||
@@ -76,13 +93,22 @@ export function parsePlatoonExchangeResponse(value: unknown): PlatoonExchangeCon
     (department?.state !== null && department?.state !== undefined &&
       (!departmentState || !/^[A-Z]{2}$/.test(departmentState))) ||
     (department?.rank !== null && department?.rank !== undefined && !rank) ||
+    (department?.fireServiceStatus !== null && department?.fireServiceStatus !== undefined &&
+      !fireServiceStatus) ||
     (!department && phone)
   ) return null;
 
   return {
     accountId,
     verifiedEmail: verifiedEmail.toLowerCase(),
-    profile: { fullName, phone, departmentName, departmentState, rank },
+    profile: {
+      fullName,
+      phone,
+      departmentName,
+      departmentState,
+      rank,
+      fireServiceStatus,
+    },
     receipt,
   };
 }

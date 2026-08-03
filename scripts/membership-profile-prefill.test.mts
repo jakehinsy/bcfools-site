@@ -24,6 +24,7 @@ test("accepts the approved connected-member prefill fields", () => {
           name: "Milwaukee Fire Department",
           state: "wi",
           rank: "Captain",
+          fireServiceStatus: "active",
         },
       },
     }),
@@ -36,6 +37,7 @@ test("accepts the approved connected-member prefill fields", () => {
         departmentName: "Milwaukee Fire Department",
         departmentState: "WI",
         rank: "Captain",
+        fireServiceStatus: "active",
       },
       receipt: "receipt-value",
     },
@@ -57,6 +59,7 @@ test("keeps optional contact and department fields null", () => {
         departmentName: null,
         departmentState: null,
         rank: null,
+        fireServiceStatus: null,
       },
       receipt: "receipt-value",
     },
@@ -69,11 +72,17 @@ test("keeps an unconfigured department state null", () => {
     profile: {
       fullName: "Applicant Name",
       phone: "+10000000000",
-      department: { name: "Test Fire Department", state: null, rank: "Captain" },
+      department: {
+        name: "Test Fire Department",
+        state: null,
+        rank: "Captain",
+        fireServiceStatus: "retired",
+      },
     },
   });
   assert.equal(connection?.profile.departmentName, "Test Fire Department");
   assert.equal(connection?.profile.departmentState, null);
+  assert.equal(connection?.profile.fireServiceStatus, "retired");
 });
 
 test("rejects malformed optional profile fields", () => {
@@ -85,6 +94,40 @@ test("rejects malformed optional profile fields", () => {
         fullName: "Applicant Name",
         phone: "+10000000000",
         department: { name: "Test Fire Department", state: "Wisconsin", rank: "Captain" },
+      },
+    }),
+    null,
+  );
+  for (const fireServiceStatus of ["ACTIVE", "Retired"]) {
+    assert.equal(
+      parsePlatoonExchangeResponse({
+        ...baseResponse,
+        profile: {
+          fullName: "Applicant Name",
+          phone: null,
+          department: {
+            name: "Test Fire Department",
+            state: "WI",
+            rank: "Captain",
+            fireServiceStatus,
+          },
+        },
+      }),
+      null,
+    );
+  }
+  assert.equal(
+    parsePlatoonExchangeResponse({
+      ...baseResponse,
+      profile: {
+        fullName: "Applicant Name",
+        phone: null,
+        department: {
+          name: "Test Fire Department",
+          state: "WI",
+          rank: "Captain",
+          fireServiceStatus: "inactive",
+        },
       },
     }),
     null,
@@ -114,15 +157,16 @@ const populatedConnection: PlatoonExchangeConnection = {
   verifiedEmail: "member@example.org",
   profile: {
     fullName: "Member Middle Name",
-    phone: "+10000000000",
+    phone: "+14141234567",
     departmentName: "Milwaukee Fire Department",
     departmentState: "WI",
     rank: "Captain",
+    fireServiceStatus: "active",
   },
   receipt: "receipt-value",
 };
 
-test("round trips populated and null profiles through the encrypted cookie", () => {
+test("validates populated and null profiles through the encrypted cookie", () => {
   const secret = "membership-profile-test-secret";
   const populated = { ...populatedConnection, expiresAt: Date.now() + 60_000 };
   assert.deepEqual(readConnection(storeConnection(populated, secret), secret), populated);
@@ -135,19 +179,32 @@ test("round trips populated and null profiles through the encrypted cookie", () 
       departmentName: null,
       departmentState: null,
       rank: null,
+      fireServiceStatus: null,
     },
   };
   assert.deepEqual(readConnection(storeConnection(empty, secret), secret), empty);
+
+  for (const fireServiceStatus of ["inactive", "ACTIVE", "Retired"]) {
+    const invalidStatus = {
+      ...populated,
+      profile: { ...populated.profile, fireServiceStatus },
+    } as unknown as typeof populated;
+    assert.equal(
+      readConnection(storeConnection(invalidStatus, secret), secret),
+      null,
+    );
+  }
 });
 
 test("maps connected profile fields to editable form defaults", () => {
   assert.deepEqual(membershipFormDefaults(populatedConnection), {
     firstName: "Member Middle",
     lastName: "Name",
-    phone: "+10000000000",
+    phone: "(414) 123-4567",
     departmentName: "Milwaukee Fire Department",
     departmentState: "WI",
     rank: "Captain",
+    fireServiceStatus: "active",
   });
 });
 
@@ -159,6 +216,7 @@ test("keeps a connected null department blank and defaults only unconnected stat
       departmentName: null,
       departmentState: null,
       rank: null,
+      fireServiceStatus: null,
     },
   };
   assert.deepEqual(membershipFormDefaults(connectedWithoutDepartment), {
@@ -168,6 +226,16 @@ test("keeps a connected null department blank and defaults only unconnected stat
     departmentName: "",
     departmentState: "",
     rank: "",
+    fireServiceStatus: "",
   });
   assert.equal(membershipFormDefaults(null).departmentState, "WI");
+});
+
+test("formats only complete US phone numbers for display", () => {
+  assert.equal(membershipFormDefaults({
+    profile: { ...populatedConnection.profile, phone: "+14141234567" },
+  }).phone, "(414) 123-4567");
+  assert.equal(membershipFormDefaults({
+    profile: { ...populatedConnection.profile, phone: "+442071838750" },
+  }).phone, "+442071838750");
 });

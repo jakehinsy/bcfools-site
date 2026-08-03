@@ -53,6 +53,11 @@ export function readConnection(
   const departmentName = optionalProfileString(profile.departmentName, 200);
   const departmentState = optionalProfileString(profile.departmentState, 2)?.toUpperCase() ?? null;
   const rank = optionalProfileString(profile.rank, 120);
+  const fireServiceStatusValue = profile.fireServiceStatus;
+  const fireServiceStatus =
+    fireServiceStatusValue === "active" || fireServiceStatusValue === "retired"
+      ? fireServiceStatusValue
+      : null;
   if (
     (profile.fullName !== null && !fullName) ||
     (profile.phone !== null && !phone) ||
@@ -60,13 +65,21 @@ export function readConnection(
     (profile.departmentState !== null &&
       (!departmentState || !/^[A-Z]{2}$/.test(departmentState))) ||
     (profile.rank !== null && !rank) ||
-    (!departmentName && (phone || departmentState || rank))
+    (profile.fireServiceStatus !== null && !fireServiceStatus) ||
+    (!departmentName && (phone || departmentState || rank || fireServiceStatus))
   ) return null;
 
   return {
     accountId: decoded.accountId as string,
     verifiedEmail: email.toLowerCase(),
-    profile: { fullName, phone, departmentName, departmentState, rank },
+    profile: {
+      fullName,
+      phone,
+      departmentName,
+      departmentState,
+      rank,
+      fireServiceStatus,
+    },
     receipt: decoded.receipt as string,
     expiresAt: decoded.expiresAt,
   };
