@@ -99,7 +99,7 @@ function EventCardContent({ event }: { event: PublicEvent }) {
       </div>
       {event.externalUrl && (
         <span className={styles.eventAction}>
-          View event <ArrowIcon />
+          <ArrowIcon />
         </span>
       )}
     </>

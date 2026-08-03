@@ -360,13 +360,15 @@
   border: 1px solid rgb(255 255 255 / 10%);
   display: grid;
   gap: 18px;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   padding: 14px;
 }
 
 .eventCardLinked {
   color: inherit;
   cursor: pointer;
+  padding-right: 48px;
+  position: relative;
   text-decoration: none;
   transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
@@ -443,21 +445,12 @@
 }
 
 .eventAction {
-  align-items: center;
-  border: 1px solid var(--red-600);
   color: var(--white);
-  display: inline-flex;
-  font-size: 0.58rem;
-  font-weight: 900;
-  gap: 8px;
-  letter-spacing: 0.08em;
-  padding: 10px;
-  text-transform: uppercase;
-}
-
-.eventAction svg {
-  height: 12px;
-  width: 12px;
+  font-size: 1.1rem;
+  line-height: 1;
+  position: absolute;
+  right: 16px;
+  top: 16px;
 }
 
 .emptyState {
@@ -775,12 +768,6 @@
 
   .eventCard {
     align-items: start;
-    grid-template-columns: auto 1fr;
-  }
-
-  .eventAction {
-    grid-column: 2;
-    justify-self: start;
   }
 
   .footerInner {
