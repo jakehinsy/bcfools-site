@@ -228,6 +228,12 @@
   border-color: rgb(255 255 255 / 46%);
 }
 
+.calendarHeading button:disabled {
+  border-color: rgb(255 255 255 / 9%);
+  color: rgb(255 255 255 / 20%);
+  cursor: not-allowed;
+}
+
 .calendarWeek,
 .calendarGrid {
   display: grid;
@@ -382,7 +388,7 @@
   line-height: 1.1;
 }
 
-.eventCardBody > p {
+.eventCategory {
   align-items: center;
   color: rgb(255 255 255 / 52%);
   display: flex;
@@ -394,7 +400,7 @@
   text-transform: uppercase;
 }
 
-.eventCardBody > p i {
+.eventCategory i {
   border-radius: 50%;
   height: 6px;
   width: 6px;
@@ -407,6 +413,13 @@
   letter-spacing: 0.02em;
   margin: 0 0 4px;
   text-transform: uppercase;
+}
+
+.eventSummary {
+  color: rgb(255 255 255 / 72%);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  margin: 8px 0 9px;
 }
 
 .eventCardBody > span {
@@ -617,6 +630,39 @@
   text-transform: uppercase;
 }
 
+.loadingMain {
+  background: var(--navy-950);
+  min-height: calc(100vh - 92px);
+  padding-block: clamp(92px, 12vw, 150px);
+}
+
+.loadingIntro,
+.loadingPanel,
+.loadingList {
+  animation: loadingPulse 1.5s ease-in-out infinite;
+  background: rgb(255 255 255 / 7%);
+}
+
+.loadingIntro {
+  height: 92px;
+  max-width: 680px;
+}
+
+.loadingGrid {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  margin-top: 60px;
+}
+
+.loadingPanel,
+.loadingList { min-height: 510px; }
+
+@keyframes loadingPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
 .filters button:focus-visible,
 .calendarHeading button:focus-visible,
 .emptyStateActions a:focus-visible,
@@ -628,7 +674,8 @@
 
 @media (max-width: 980px) {
   .scheduleGrid,
-  .sectionHeading { grid-template-columns: 1fr; }
+  .sectionHeading,
+  .loadingGrid { grid-template-columns: 1fr; }
 
   .sectionHeading > p { max-width: 680px; }
   .eventList { min-height: 520px; }
@@ -726,4 +773,7 @@
 @media (prefers-reduced-motion: reduce) {
   .filters button,
   .calendarHeading button { transition-duration: 0.01ms; }
+  .loadingIntro,
+  .loadingPanel,
+  .loadingList { animation: none; }
 }

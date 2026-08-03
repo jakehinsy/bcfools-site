@@ -57,9 +57,22 @@ The server route requires these Vercel Preview environment variables:
 Do not expose these values through `NEXT_PUBLIC_*` variables.
 
 The `/events` route contains a responsive public calendar and upcoming-event
-list. Event rendering is driven by the typed shape in `src/data/events.ts`;
-the source remains intentionally empty until an approved public Platoon event
-feed is available.
+list backed by Platoon's tenant-safe public organization-events feed. The
+server validates and reduces the upstream payload before it reaches the client,
+and only explicitly public organization events appear. Stable category keys,
+names, and colors drive both the list filters and calendar legend; tenant-level
+label or color overrides remain in `src/config/site.ts`.
+
+The public-events adapter uses these server-only Preview variables:
+
+- `PLATOON_PUBLIC_EVENTS_URL` — the full HTTPS Platoon
+  `/api/public/organization-events` endpoint
+- `PLATOON_PUBLIC_EVENTS_BYPASS_SECRET` — optional Vercel Preview deployment
+  protection bypass value for the Platoon staging endpoint
+
+The website requests a bounded 12-month window and caches the public response
+for five minutes. Feed failures render a safe retry state and never fall back to
+private or locally duplicated event data.
 
 The `/contact` route merges the legacy Contact and E-Board pages into a single
 leadership and role-directory experience. Officer names, portraits, and public

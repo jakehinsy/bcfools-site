@@ -1,3 +1,8 @@
+const publicEventCategoryOverrides: Record<
+  string,
+  { label?: string; color?: string }
+> = {};
+
 export const siteConfig = {
   name: "Brew City F.O.O.L.S.",
   shortName: "Brew City FOOLS",
@@ -24,6 +29,12 @@ export const siteConfig = {
     terms: "/terms",
     facebook: "https://www.facebook.com/brewcity.fools",
     instagram: "https://www.instagram.com/brewcityf.o.o.l.s/",
+  },
+  publicEvents: {
+    organizationSlug: "brew-city-fools",
+    defaultTimeZone: "America/Chicago",
+    defaultCategoryColor: "#ff5964",
+    categoryOverrides: publicEventCategoryOverrides,
   },
   membership: {
     newMemberPrice: 50,

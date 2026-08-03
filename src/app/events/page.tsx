@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
-import { publicEvents } from "@/data/events";
+import { websiteEventsFromPlatoon } from "@/data/events";
+import { loadPublicOrganizationEvents } from "@/lib/platoonPublicEvents";
 import { ArrowIcon } from "../ArrowIcon";
 import { PoweredByPlatoon } from "../PoweredByPlatoon";
 import { LegalLinks } from "../LegalLinks";
@@ -15,6 +16,8 @@ export const metadata: Metadata = {
   description:
     "Public training, chapter gatherings, fundraisers, and community events from Brew City F.O.O.L.S.",
 };
+
+export const dynamic = "force-dynamic";
 
 const eventTypes = [
   {
@@ -37,7 +40,18 @@ const eventTypes = [
   },
 ];
 
-export default function EventsPage() {
+export default async function EventsPage() {
+  const now = new Date();
+  const feed = await loadPublicOrganizationEvents(
+    siteConfig.publicEvents.organizationSlug,
+    siteConfig.publicEvents.defaultTimeZone,
+    now,
+  );
+  const publicEvents = websiteEventsFromPlatoon(
+    feed.events,
+    siteConfig.publicEvents,
+  );
+
   return (
     <>
       <a className="skip-link" href="#events-content">
@@ -79,12 +93,19 @@ export default function EventsPage() {
                 <h2>See what is coming up.</h2>
               </div>
               <p>
-                Browse by month or event type. Once public Brew City events are
-                available through Platoon, they will fill this calendar and the
-                upcoming list together.
+                Browse Brew City&apos;s public calendar by month or event type. New
+                public events appear here after the chapter publishes them
+                through Platoon.
               </p>
             </div>
-            <EventsCalendar events={publicEvents} />
+            <EventsCalendar
+              calendarTimeZone={siteConfig.publicEvents.defaultTimeZone}
+              events={publicEvents}
+              feedStatus={feed.status}
+              now={now.toISOString()}
+              rangeEnd={feed.rangeEnd}
+              rangeStart={feed.rangeStart}
+            />
           </div>
         </section>
 
