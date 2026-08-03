@@ -11,7 +11,6 @@ import {
 export const APPLICATION_SCHEMA_VERSION = "2026-08-02";
 export const APPLICATION_SIGNATURE_PATH = "/api/public/membership-applications";
 export const CONNECTION_EXCHANGE_PATH = "/api/public/membership-connections/exchange";
-export const CONNECTION_FLOW_COOKIE = "bcf_platoon_connect_flow";
 export const CONNECTION_COOKIE = "bcf_platoon_connection";
 
 const PROGRAM_KEY_PATTERN = /^mpk_[A-Za-z0-9_-]{12,80}$/;
@@ -34,7 +33,6 @@ export type PlatoonConnectionSummary = Pick<PlatoonConnection, "verifiedEmail" |
 
 type ConnectionFlow = {
   applicationType: "new" | "renewal";
-  state: string;
   verifier: string;
   expiresAt: number;
 };
@@ -209,14 +207,15 @@ export function createConnectionFlow(
   const verifier = randomBytes(48).toString("base64url");
   const flow: ConnectionFlow = {
     applicationType,
-    state: randomBytes(32).toString("base64url"),
     verifier,
     expiresAt: Date.now() + 10 * 60 * 1000,
   };
   return {
     challenge: createHash("sha256").update(verifier).digest("base64url"),
-    cookieValue: seal(flow, secret),
-    state: flow.state,
+    // Authenticated encryption keeps the PKCE verifier confidential while
+    // allowing the callback to recover its short-lived flow without relying
+    // on a browser cookie surviving deployment-host redirects.
+    state: seal(flow, secret),
   };
 }
 
@@ -226,7 +225,6 @@ export function readConnectionFlow(value: string | undefined, secret: string): C
   if (
     !decoded ||
     (decoded.applicationType !== "new" && decoded.applicationType !== "renewal") ||
-    !boundedString(decoded.state, 512) ||
     !boundedString(decoded.verifier, 128) ||
     typeof decoded.expiresAt !== "number" ||
     decoded.expiresAt <= Date.now()

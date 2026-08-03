@@ -1,9 +1,8 @@
-import { timingSafeEqual, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   CONNECTION_COOKIE,
   CONNECTION_EXCHANGE_PATH,
-  CONNECTION_FLOW_COOKIE,
   connectionConfiguration,
   readConnectionFlow,
   secureCookie,
@@ -13,12 +12,6 @@ import {
 } from "@/lib/platoonMembership";
 
 export const runtime = "nodejs";
-
-function sameValue(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
-}
 
 function callbackDestination(
   returnUrl: URL,
@@ -115,13 +108,7 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code")?.trim();
   const state = requestUrl.searchParams.get("state")?.trim();
-  const cookieHeader = request.headers.get("cookie") ?? "";
-  const flowCookie = cookieHeader
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${CONNECTION_FLOW_COOKIE}=`))
-    ?.slice(CONNECTION_FLOW_COOKIE.length + 1);
-  const flow = readConnectionFlow(flowCookie, config.secret);
+  const flow = readConnectionFlow(state, config.secret);
   const failure = (
     stage: ConnectionFailureStage,
     details: Record<string, boolean | number | string | null> = {},
@@ -135,13 +122,6 @@ export async function GET(request: Request) {
         reference,
       ),
     );
-    response.cookies.set(CONNECTION_FLOW_COOKIE, "", {
-      httpOnly: true,
-      maxAge: 0,
-      path: "/api/platoon/connect",
-      sameSite: "lax",
-      secure: secureCookie,
-    });
     return response;
   };
 
@@ -150,15 +130,14 @@ export async function GET(request: Request) {
     !code ||
     code.length < 20 ||
     code.length > 200 ||
-    !state ||
-    !sameValue(state, flow.state)
+    !state
   ) {
     return failure("callback_parameters", {
       hasFlow: Boolean(flow),
       hasCode: Boolean(code),
       codeLengthValid: Boolean(code && code.length >= 20 && code.length <= 200),
       hasState: Boolean(state),
-      stateMatches: Boolean(flow && state && sameValue(state, flow.state)),
+      stateLengthValid: Boolean(state && state.length >= 32 && state.length <= 512),
     });
   }
 
@@ -192,13 +171,6 @@ export async function GET(request: Request) {
     const response = NextResponse.redirect(
       callbackDestination(config.returnUrl, "connected", flow.applicationType),
     );
-    response.cookies.set(CONNECTION_FLOW_COOKIE, "", {
-      httpOnly: true,
-      maxAge: 0,
-      path: "/api/platoon/connect",
-      sameSite: "lax",
-      secure: secureCookie,
-    });
     response.cookies.set(CONNECTION_COOKIE, storeConnection(connection, config.secret), {
       httpOnly: true,
       maxAge: 15 * 60,

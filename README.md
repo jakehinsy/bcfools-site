@@ -27,9 +27,10 @@ default. Public `/privacy` and `/terms` pages describe the application data,
 Platoon account handoff, optional messaging program, and payment boundary.
 
 Existing Platoon users can connect through a server-mediated PKCE flow. The
-website stores the short-lived verifier and single-use connection receipt only
-in encrypted, `HttpOnly` cookies. The browser form receives the verified email
-and approved profile prefill, but never receives the receipt or program secret.
+website carries the short-lived verifier in authenticated encrypted state and
+stores the single-use connection receipt only in an encrypted, `HttpOnly`
+cookie. The browser form receives the verified email and approved profile
+prefill, but never receives the verifier, receipt, or program secret.
 Applicants who do not connect an account receive Platoon's secure activation
 or sign-in email after intake; no password is collected by the public website.
 
