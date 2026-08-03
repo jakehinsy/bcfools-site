@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:membership-connect": "node --test scripts/membership-connect-browser-binding.test.mjs"
+    "test": "npm run test:membership-connect && npm run test:membership-profile",
+    "test:membership-connect": "node --test scripts/membership-connect-browser-binding.test.mjs",
+    "test:membership-profile": "node --experimental-strip-types --test scripts/membership-profile-prefill.test.mts"
   },
   "dependencies": {
     "next": "16.2.12",

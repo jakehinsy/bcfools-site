@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { parsePlatoonExchangeResponse } from "@/lib/platoonConnectionPayload";
 import {
   CONNECTION_COOKIE,
   CONNECTION_EXCHANGE_PATH,
@@ -59,38 +60,10 @@ function logConnectionFailure(
 }
 
 function validExchangeResponse(value: unknown): PlatoonConnection | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const root = value as Record<string, unknown>;
-  const profile = root.profile as Record<string, unknown> | undefined;
-  const requiredString = (candidate: unknown, maxLength: number) =>
-    typeof candidate === "string" && candidate.trim() && candidate.length <= maxLength
-      ? candidate.trim()
-      : null;
-  const optionalString = (candidate: unknown, maxLength: number) =>
-    candidate === null || candidate === undefined
-      ? null
-      : requiredString(candidate, maxLength);
-  const accountId = requiredString(root.accountId, 100);
-  const verifiedEmail = requiredString(root.verifiedEmail, 320);
-  const receipt = requiredString(root.connectionReceipt, 2_000);
-  const fullName = optionalString(profile?.fullName, 200);
-  const departmentName = optionalString(profile?.departmentName, 200);
-  const rank = optionalString(profile?.rank, 120);
-  if (
-    !accountId ||
-    !verifiedEmail ||
-    !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(verifiedEmail) ||
-    !receipt ||
-    !profile ||
-    (profile.fullName !== null && profile.fullName !== undefined && !fullName) ||
-    (profile.departmentName !== null && profile.departmentName !== undefined && !departmentName) ||
-    (profile.rank !== null && profile.rank !== undefined && !rank)
-  ) return null;
+  const connection = parsePlatoonExchangeResponse(value);
+  if (!connection) return null;
   return {
-    accountId,
-    verifiedEmail: verifiedEmail.toLowerCase(),
-    profile: { fullName, departmentName, rank },
-    receipt,
+    ...connection,
     expiresAt: Date.now() + 15 * 60 * 1000,
   };
 }

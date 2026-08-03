@@ -3,6 +3,7 @@
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { membershipFormDefaults } from "@/lib/platoonConnectionPayload";
 import type { PlatoonConnectionSummary } from "@/lib/platoonMembership";
 import styles from "./join.module.css";
 
@@ -77,9 +78,7 @@ export function MembershipApplicationForm({
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
   const [connectionStarting, setConnectionStarting] = useState(false);
   const submissionId = useRef<string | null>(null);
-  const nameParts = initialConnection?.profile.fullName?.trim().split(/\s+/) ?? [];
-  const initialFirstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0] ?? "";
-  const initialLastName = nameParts.length > 1 ? nameParts.at(-1) ?? "" : "";
+  const initialValues = membershipFormDefaults(initialConnection);
 
   const price =
     applicationType === "new"
@@ -372,7 +371,7 @@ export function MembershipApplicationForm({
             <span>First name</span>
             <input
               autoComplete="given-name"
-              defaultValue={initialFirstName}
+              defaultValue={initialValues.firstName}
               name="firstName"
               required
             />
@@ -381,7 +380,7 @@ export function MembershipApplicationForm({
             <span>Last name</span>
             <input
               autoComplete="family-name"
-              defaultValue={initialLastName}
+              defaultValue={initialValues.lastName}
               name="lastName"
               required
             />
@@ -400,7 +399,13 @@ export function MembershipApplicationForm({
           </label>
           <label className={styles.field}>
             <span>Phone number</span>
-            <input autoComplete="tel" name="phone" required type="tel" />
+            <input
+              autoComplete="tel"
+              defaultValue={initialValues.phone}
+              name="phone"
+              required
+              type="tel"
+            />
           </label>
         </div>
       </fieldset>
@@ -414,14 +419,19 @@ export function MembershipApplicationForm({
           <label className={`${styles.field} ${styles.fieldWide}`}>
             <span>Fire department</span>
             <input
-              defaultValue={initialConnection?.profile.departmentName ?? ""}
+              defaultValue={initialValues.departmentName}
               name="fireDepartment"
               required
             />
           </label>
           <label className={styles.field}>
             <span>Department state</span>
-            <select defaultValue="WI" name="departmentState" required>
+            <select
+              defaultValue={initialValues.departmentState}
+              name="departmentState"
+              required
+            >
+              <option disabled value="">Select state</option>
               {stateOptions.map((state) => (
                 <option key={state} value={state}>
                   {state}
@@ -431,7 +441,7 @@ export function MembershipApplicationForm({
           </label>
           <label className={styles.field}>
             <span>Current or last-held rank</span>
-            <input defaultValue={initialConnection?.profile.rank ?? ""} name="rank" required />
+            <input defaultValue={initialValues.rank} name="rank" required />
           </label>
           <label className={styles.field}>
             <span>Fire service status</span>

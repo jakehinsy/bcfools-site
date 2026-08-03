@@ -31,7 +31,11 @@ website carries the short-lived verifier in authenticated encrypted state and
 binds the callback to a nonce held only in the initiating browser session. The
 single-use connection receipt is stored only in an encrypted, `HttpOnly`
 cookie. The browser form receives the verified email and approved profile
-prefill, but never receives the verifier, receipt, or program secret.
+prefill. That prefill is limited to canonical full name plus the phone,
+department name/state, and rank attached to a current approved department
+relationship; department/contact fields remain empty when no such relationship
+exists. The browser never receives the verifier, receipt, program secret, or
+internal Platoon identifiers.
 Applicants who do not connect an account receive Platoon's secure activation
 or sign-in email after intake; no password is collected by the public website.
 

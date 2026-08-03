@@ -1,13 +1,18 @@
 import "server-only";
 
 import {
-  createCipheriv,
-  createDecipheriv,
   createHash,
   createHmac,
   randomBytes,
   timingSafeEqual,
 } from "node:crypto";
+import {
+  sealAuthenticatedState,
+  unsealAuthenticatedState,
+} from "./authenticatedState";
+import type { StoredPlatoonConnection } from "./platoonConnectionCookie";
+
+export { readConnection, storeConnection } from "./platoonConnectionCookie";
 
 export const APPLICATION_SCHEMA_VERSION = "2026-08-02";
 export const APPLICATION_SIGNATURE_PATH = "/api/public/membership-applications";
@@ -18,17 +23,7 @@ const PROGRAM_KEY_PATTERN = /^mpk_[A-Za-z0-9_-]{12,80}$/;
 const PROGRAM_HANDLE_PATTERN = /^mpp_[A-Za-z0-9_-]{12,80}$/;
 const COOKIE_CONTEXT = "bcfools-membership-connection-v1";
 
-export type PlatoonConnection = {
-  accountId: string;
-  verifiedEmail: string;
-  profile: {
-    fullName: string | null;
-    departmentName: string | null;
-    rank: string | null;
-  };
-  receipt: string;
-  expiresAt: number;
-};
+export type PlatoonConnection = StoredPlatoonConnection;
 
 export type PlatoonConnectionSummary = Pick<PlatoonConnection, "verifiedEmail" | "profile">;
 
@@ -155,38 +150,12 @@ export function signedProgramHeaders({
   };
 }
 
-function encryptionKey(secret: string): Buffer {
-  return createHash("sha256").update(`${COOKIE_CONTEXT}:${secret}`).digest();
-}
-
 function seal(value: object, secret: string): string {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", encryptionKey(secret), iv);
-  const ciphertext = Buffer.concat([
-    cipher.update(JSON.stringify(value), "utf8"),
-    cipher.final(),
-  ]);
-  return [iv, cipher.getAuthTag(), ciphertext]
-    .map((part) => part.toString("base64url"))
-    .join(".");
+  return sealAuthenticatedState(value, secret, COOKIE_CONTEXT);
 }
 
 function unseal(value: string, secret: string): unknown {
-  const parts = value.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    const [iv, tag, ciphertext] = parts.map((part) => Buffer.from(part, "base64url"));
-    if (iv.length !== 12 || tag.length !== 16) return null;
-    const decipher = createDecipheriv("aes-256-gcm", encryptionKey(secret), iv);
-    decipher.setAuthTag(tag);
-    const plaintext = Buffer.concat([
-      decipher.update(ciphertext),
-      decipher.final(),
-    ]).toString("utf8");
-    return JSON.parse(plaintext) as unknown;
-  } catch {
-    return null;
-  }
+  return unsealAuthenticatedState(value, secret, COOKIE_CONTEXT);
 }
 
 function boundedString(value: unknown, maxLength: number): string | null {
@@ -245,49 +214,6 @@ export function connectionFlowMatchesBrowser(
   const actualBuffer = Buffer.from(actual);
   return expectedBuffer.length === actualBuffer.length &&
     timingSafeEqual(expectedBuffer, actualBuffer);
-}
-
-export function storeConnection(connection: PlatoonConnection, secret: string): string {
-  return seal(connection, secret);
-}
-
-export function readConnection(
-  value: string | undefined,
-  secret: string,
-): PlatoonConnection | null {
-  if (!value) return null;
-  const decoded = unseal(value, secret) as Partial<PlatoonConnection> | null;
-  const profile = decoded?.profile as Partial<PlatoonConnection["profile"]> | undefined;
-  const email = boundedString(decoded?.verifiedEmail, 320);
-  if (
-    !decoded ||
-    !boundedString(decoded.accountId, 100) ||
-    !email ||
-    !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email) ||
-    !boundedString(decoded.receipt, 2_000) ||
-    typeof decoded.expiresAt !== "number" ||
-    decoded.expiresAt <= Date.now() ||
-    !profile
-  ) return null;
-
-  const optionalProfileString = (value: unknown, maxLength: number) =>
-    value === null ? null : boundedString(value, maxLength);
-  const fullName = optionalProfileString(profile.fullName, 200);
-  const departmentName = optionalProfileString(profile.departmentName, 200);
-  const rank = optionalProfileString(profile.rank, 120);
-  if (
-    (profile.fullName !== null && !fullName) ||
-    (profile.departmentName !== null && !departmentName) ||
-    (profile.rank !== null && !rank)
-  ) return null;
-
-  return {
-    accountId: decoded.accountId as string,
-    verifiedEmail: email.toLowerCase(),
-    profile: { fullName, departmentName, rank },
-    receipt: decoded.receipt as string,
-    expiresAt: decoded.expiresAt,
-  };
 }
 
 export function connectionSummary(connection: PlatoonConnection): PlatoonConnectionSummary {
