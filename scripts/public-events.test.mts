@@ -11,6 +11,7 @@ import {
 import {
   parsePublicOrganizationEventsPayload,
   publicEventRange,
+  publicEventsRequestInit,
   publicEventsRequestUrl,
 } from "../src/lib/publicOrganizationEvents.ts";
 
@@ -18,6 +19,16 @@ const range = {
   rangeStart: "2026-08-01T00:00:00.000Z",
   rangeEnd: "2027-08-01T00:00:00.000Z",
 };
+
+test("relies on the bounded upstream cache instead of a stale website cache", () => {
+  const request = publicEventsRequestInit("preview-secret");
+  const headers = new Headers(request.headers);
+
+  assert.equal(request.cache, "no-store");
+  assert.equal(headers.get("accept"), "application/json");
+  assert.equal(headers.get("x-vercel-protection-bypass"), "preview-secret");
+  assert.ok(request.signal instanceof AbortSignal);
+});
 
 const publicEvent = {
   eventKey: "00000000-0000-0000-0000-000000000001",

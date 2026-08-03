@@ -214,3 +214,14 @@ export function publicEventsRequestUrl(
     return null;
   }
 }
+
+export function publicEventsRequestInit(bypassSecret?: string): RequestInit {
+  return {
+    cache: "no-store",
+    headers: {
+      accept: "application/json",
+      ...(bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : {}),
+    },
+    signal: AbortSignal.timeout(8_000),
+  };
+}

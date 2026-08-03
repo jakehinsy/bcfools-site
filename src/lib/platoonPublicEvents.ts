@@ -3,6 +3,7 @@ import "server-only";
 import {
   parsePublicOrganizationEventsPayload,
   publicEventRange,
+  publicEventsRequestInit,
   publicEventsRequestUrl,
   type PlatoonPublicOrganizationEvent,
   type PublicEventRange,
@@ -25,14 +26,7 @@ export async function loadPublicOrganizationEvents(
 
   const bypassSecret = process.env.PLATOON_PUBLIC_EVENTS_BYPASS_SECRET?.trim();
   try {
-    const response = await fetch(url, {
-      headers: {
-        accept: "application/json",
-        ...(bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : {}),
-      },
-      next: { revalidate: 300 },
-      signal: AbortSignal.timeout(8_000),
-    });
+    const response = await fetch(url, publicEventsRequestInit(bypassSecret));
     if (!response.ok) return { ...range, status: "unavailable", events: [] };
 
     const payload = parsePublicOrganizationEventsPayload(
