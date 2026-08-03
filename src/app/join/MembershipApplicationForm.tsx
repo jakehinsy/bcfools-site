@@ -26,11 +26,13 @@ const stateOptions = [
 ] as const;
 
 export function MembershipApplicationForm({
+  connectionSupportReference,
   connectionStatus,
   defaultType,
   initialConnection,
   platoonSignInAvailable,
 }: {
+  connectionSupportReference: string | null;
   connectionStatus: "connected" | "error" | "unavailable" | null;
   defaultType: ApplicationType;
   initialConnection: PlatoonConnectionSummary | null;
@@ -166,7 +168,11 @@ export function MembershipApplicationForm({
         )}
         {!initialConnection && connectionStatus === "error" ? (
           <p className={styles.connectionError} role="alert">
-            We couldn&apos;t connect that Platoon account. Try again or continue with the application.
+            We couldn&apos;t connect that Platoon account. Please wait before trying
+            again or continue with the application.
+            {connectionSupportReference ? (
+              <> Support reference: <strong>{connectionSupportReference}</strong>.</>
+            ) : null}
           </p>
         ) : null}
         {!initialConnection && connectionStatus === "unavailable" ? (

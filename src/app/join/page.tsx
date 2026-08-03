@@ -24,7 +24,11 @@ export const metadata: Metadata = {
 export default async function JoinPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; platoon?: string }>;
+  searchParams: Promise<{
+    type?: string;
+    platoon?: string;
+    connection_ref?: string;
+  }>;
 }) {
   const params = await searchParams;
   const defaultType = params.type === "renewal" ? "renewal" : "new";
@@ -34,6 +38,12 @@ export default async function JoinPage({
     params.platoon === "unavailable"
       ? params.platoon
       : null;
+  const rawConnectionSupportReference = params.connection_ref ?? "";
+  const connectionSupportReference = /^CONN-[A-F0-9]{8}$/.test(
+    rawConnectionSupportReference,
+  )
+    ? rawConnectionSupportReference
+    : null;
   let initialConnection = null;
   try {
     const cookieStore = await cookies();
@@ -123,6 +133,7 @@ export default async function JoinPage({
                 <p>Required fields are marked by the browser when you continue.</p>
               </div>
               <MembershipApplicationForm
+                connectionSupportReference={connectionSupportReference}
                 connectionStatus={connectionStatus}
                 defaultType={defaultType}
                 initialConnection={initialConnection}

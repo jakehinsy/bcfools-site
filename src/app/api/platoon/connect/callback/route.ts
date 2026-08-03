@@ -24,12 +24,39 @@ function callbackDestination(
   returnUrl: URL,
   status: "connected" | "error",
   applicationType: "new" | "renewal" = "new",
+  supportReference?: string,
 ) {
   const destination = new URL("/join", returnUrl);
   destination.searchParams.set("platoon", status);
   destination.searchParams.set("type", applicationType);
+  if (status === "error" && supportReference) {
+    destination.searchParams.set("connection_ref", supportReference);
+  }
   destination.hash = "application";
   return destination;
+}
+
+type ConnectionFailureStage =
+  | "configuration"
+  | "callback_parameters"
+  | "exchange_request"
+  | "exchange_rejected"
+  | "exchange_response";
+
+function supportReference() {
+  return `CONN-${randomUUID().split("-")[0].toUpperCase()}`;
+}
+
+function logConnectionFailure(
+  reference: string,
+  stage: ConnectionFailureStage,
+  details: Record<string, boolean | number | string | null> = {},
+) {
+  console.error("[membership-connect] callback failed", {
+    reference,
+    stage,
+    ...details,
+  });
 }
 
 function validExchangeResponse(value: unknown): PlatoonConnection | null {
@@ -70,11 +97,19 @@ function validExchangeResponse(value: unknown): PlatoonConnection | null {
 }
 
 export async function GET(request: Request) {
+  const reference = supportReference();
   let config: ReturnType<typeof connectionConfiguration>;
   try {
     config = connectionConfiguration();
-  } catch {
-    return NextResponse.redirect(new URL("/join?platoon=error#application", request.url));
+  } catch (error) {
+    logConnectionFailure(reference, "configuration", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    const destination = new URL("/join", request.url);
+    destination.searchParams.set("platoon", "error");
+    destination.searchParams.set("connection_ref", reference);
+    destination.hash = "application";
+    return NextResponse.redirect(destination);
   }
 
   const requestUrl = new URL(request.url);
@@ -87,9 +122,18 @@ export async function GET(request: Request) {
     .find((part) => part.startsWith(`${CONNECTION_FLOW_COOKIE}=`))
     ?.slice(CONNECTION_FLOW_COOKIE.length + 1);
   const flow = readConnectionFlow(flowCookie, config.secret);
-  const failure = () => {
+  const failure = (
+    stage: ConnectionFailureStage,
+    details: Record<string, boolean | number | string | null> = {},
+  ) => {
+    logConnectionFailure(reference, stage, details);
     const response = NextResponse.redirect(
-      callbackDestination(config.returnUrl, "error", flow?.applicationType),
+      callbackDestination(
+        config.returnUrl,
+        "error",
+        flow?.applicationType,
+        reference,
+      ),
     );
     response.cookies.set(CONNECTION_FLOW_COOKIE, "", {
       httpOnly: true,
@@ -108,7 +152,15 @@ export async function GET(request: Request) {
     code.length > 200 ||
     !state ||
     !sameValue(state, flow.state)
-  ) return failure();
+  ) {
+    return failure("callback_parameters", {
+      hasFlow: Boolean(flow),
+      hasCode: Boolean(code),
+      codeLengthValid: Boolean(code && code.length >= 20 && code.length <= 200),
+      hasState: Boolean(state),
+      stateMatches: Boolean(flow && state && sameValue(state, flow.state)),
+    });
+  }
 
   try {
     const idempotencyKey = randomUUID();
@@ -128,9 +180,14 @@ export async function GET(request: Request) {
       redirect: "error",
       signal: AbortSignal.timeout(12_000),
     });
-    if (!exchangeResponse.ok) return failure();
+    if (!exchangeResponse.ok) {
+      return failure("exchange_rejected", {
+        hasBypassSecret: Boolean(config.bypassSecret),
+        status: exchangeResponse.status,
+      });
+    }
     const connection = validExchangeResponse(await exchangeResponse.json());
-    if (!connection) return failure();
+    if (!connection) return failure("exchange_response");
 
     const response = NextResponse.redirect(
       callbackDestination(config.returnUrl, "connected", flow.applicationType),
@@ -150,7 +207,10 @@ export async function GET(request: Request) {
       secure: secureCookie,
     });
     return response;
-  } catch {
-    return failure();
+  } catch (error) {
+    return failure("exchange_request", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      hasBypassSecret: Boolean(config.bypassSecret),
+    });
   }
 }
