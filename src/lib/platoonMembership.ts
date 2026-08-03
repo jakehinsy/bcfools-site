@@ -6,6 +6,7 @@ import {
   createHash,
   createHmac,
   randomBytes,
+  timingSafeEqual,
 } from "node:crypto";
 
 export const APPLICATION_SCHEMA_VERSION = "2026-08-02";
@@ -33,9 +34,12 @@ export type PlatoonConnectionSummary = Pick<PlatoonConnection, "verifiedEmail" |
 
 type ConnectionFlow = {
   applicationType: "new" | "renewal";
+  browserBindingHash: string;
   verifier: string;
   expiresAt: number;
 };
+
+const BROWSER_BINDING_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 function requiredEnvironment(name: string): string {
   const value = process.env[name]?.trim();
@@ -203,10 +207,15 @@ function boundedString(value: unknown, maxLength: number): string | null {
 export function createConnectionFlow(
   secret: string,
   applicationType: "new" | "renewal",
+  browserBindingHash: string,
 ) {
+  if (!BROWSER_BINDING_PATTERN.test(browserBindingHash)) {
+    throw new Error("The browser binding is invalid.");
+  }
   const verifier = randomBytes(48).toString("base64url");
   const flow: ConnectionFlow = {
     applicationType,
+    browserBindingHash,
     verifier,
     expiresAt: Date.now() + 10 * 60 * 1000,
   };
@@ -225,11 +234,26 @@ export function readConnectionFlow(value: string | undefined, secret: string): C
   if (
     !decoded ||
     (decoded.applicationType !== "new" && decoded.applicationType !== "renewal") ||
+    typeof decoded.browserBindingHash !== "string" ||
+    !boundedString(decoded.browserBindingHash, 43) ||
+    !BROWSER_BINDING_PATTERN.test(decoded.browserBindingHash) ||
     !boundedString(decoded.verifier, 128) ||
     typeof decoded.expiresAt !== "number" ||
     decoded.expiresAt <= Date.now()
   ) return null;
   return decoded as ConnectionFlow;
+}
+
+export function connectionFlowMatchesBrowser(
+  flow: ConnectionFlow,
+  browserBinding: string,
+): boolean {
+  if (!BROWSER_BINDING_PATTERN.test(browserBinding)) return false;
+  const actual = createHash("sha256").update(browserBinding).digest("base64url");
+  const expectedBuffer = Buffer.from(flow.browserBindingHash);
+  const actualBuffer = Buffer.from(actual);
+  return expectedBuffer.length === actualBuffer.length &&
+    timingSafeEqual(expectedBuffer, actualBuffer);
 }
 
 export function storeConnection(connection: PlatoonConnection, secret: string): string {

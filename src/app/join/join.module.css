@@ -247,7 +247,7 @@
   margin: 4px 0 0;
 }
 
-.connectionPrompt > a,
+.connectionPrompt > button,
 .connectionConfirmed > a {
   align-items: center;
   display: inline-flex;
@@ -260,9 +260,17 @@
   text-transform: uppercase;
 }
 
-.connectionPrompt > a {
+.connectionPrompt > button {
   background: var(--navy-950);
+  border: 0;
   color: var(--white);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.connectionPrompt > button:disabled {
+  cursor: wait;
+  opacity: 0.75;
 }
 
 .connectionConfirmed > a {
@@ -289,7 +297,7 @@
   padding: 10px 12px;
 }
 
-.connectionPrompt > a:focus-visible,
+.connectionPrompt > button:focus-visible,
 .connectionConfirmed > a:focus-visible {
   outline: 3px solid #f0b323;
   outline-offset: 4px;
@@ -805,7 +813,7 @@
     display: none;
   }
 
-  .connectionPrompt > a,
+  .connectionPrompt > button,
   .connectionConfirmed > a,
   .connectionPrompt > span {
     justify-self: start;

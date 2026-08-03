@@ -7,12 +7,18 @@ import {
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const applicationType = new URL(request.url).searchParams.get("type") === "renewal"
+  const requestUrl = new URL(request.url);
+  const applicationType = requestUrl.searchParams.get("type") === "renewal"
     ? "renewal"
     : "new";
+  const browserBindingHash = requestUrl.searchParams.get("binding")?.trim() ?? "";
   try {
     const config = connectionConfiguration();
-    const flow = createConnectionFlow(config.secret, applicationType);
+    const flow = createConnectionFlow(
+      config.secret,
+      applicationType,
+      browserBindingHash,
+    );
     const destination = new URL(config.authorizeUrl);
     destination.searchParams.set("program", config.programHandle);
     destination.searchParams.set("return_url", config.returnUrl.toString());

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import type { PlatoonConnectionSummary } from "@/lib/platoonMembership";
@@ -25,6 +25,21 @@ const stateOptions = [
   "UT", "VT", "VA", "WA", "WV", "WI", "WY",
 ] as const;
 
+const CONNECTION_BINDING_STORAGE_KEY = "bcf_platoon_connect_binding";
+const CONNECTION_HANDOFF_PREFIX = "#platoon-connect=";
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+}
+
+function validConnectionRedirect(value: unknown): value is string {
+  return typeof value === "string" && /^\/join\?(?:[^#]*&)?platoon=(?:connected|error)(?:[&#]|$)/.test(value);
+}
+
 export function MembershipApplicationForm({
   connectionSupportReference,
   connectionStatus,
@@ -41,6 +56,7 @@ export function MembershipApplicationForm({
   const [applicationType, setApplicationType] =
     useState<ApplicationType>(defaultType);
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
+  const [connectionStarting, setConnectionStarting] = useState(false);
   const submissionId = useRef<string | null>(null);
   const nameParts = initialConnection?.profile.fullName?.trim().split(/\s+/) ?? [];
   const initialFirstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0] ?? "";
@@ -50,6 +66,65 @@ export function MembershipApplicationForm({
     applicationType === "new"
       ? siteConfig.membership.newMemberPrice
       : siteConfig.membership.renewalPrice;
+
+  useEffect(() => {
+    if (!window.location.hash.startsWith(CONNECTION_HANDOFF_PREFIX)) return;
+    const encoded = window.location.hash.slice(CONNECTION_HANDOFF_PREFIX.length);
+    const browserBinding = sessionStorage.getItem(CONNECTION_BINDING_STORAGE_KEY) ?? "";
+    sessionStorage.removeItem(CONNECTION_BINDING_STORAGE_KEY);
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#application`);
+
+    let handoff: { code?: unknown; state?: unknown } = {};
+    try {
+      const base64 = encoded.replaceAll("-", "+").replaceAll("_", "/");
+      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+      handoff = JSON.parse(atob(padded)) as { code?: unknown; state?: unknown };
+    } catch {
+      handoff = {};
+    }
+
+    void fetch("/api/platoon/connect/callback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        browserBinding,
+        code: handoff.code,
+        state: handoff.state,
+      }),
+      cache: "no-store",
+      credentials: "same-origin",
+    })
+      .then(async (response) => response.json() as Promise<{ redirectTo?: unknown }>)
+      .then((result) => {
+        if (!validConnectionRedirect(result.redirectTo)) throw new Error("Invalid redirect.");
+        window.location.replace(result.redirectTo);
+      })
+      .catch(() => {
+        window.location.replace("/join?platoon=error#application");
+      });
+  }, []);
+
+  async function handlePlatoonSignIn(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    if (connectionStarting) return;
+    setConnectionStarting(true);
+    try {
+      const browserBinding = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(32)));
+      const digest = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(browserBinding),
+      );
+      const browserBindingHash = bytesToBase64Url(new Uint8Array(digest));
+      sessionStorage.setItem(CONNECTION_BINDING_STORAGE_KEY, browserBinding);
+      window.location.assign(
+        `/api/platoon/connect/start?type=${applicationType}&binding=${browserBindingHash}`,
+      );
+    } catch {
+      sessionStorage.removeItem(CONNECTION_BINDING_STORAGE_KEY);
+      setConnectionStarting(false);
+      window.location.assign(`/join?platoon=unavailable&type=${applicationType}#application`);
+    }
+  }
 
   function resetAttempt() {
     if (submission.status !== "submitting") {
@@ -158,9 +233,14 @@ export function MembershipApplicationForm({
               <p>Sign in to verify your email and prefill available profile details.</p>
             </div>
             {platoonSignInAvailable ? (
-              <a href={`/api/platoon/connect/start?type=${applicationType}`}>
-                Sign in with Platoon
-              </a>
+              <button
+                aria-disabled={connectionStarting}
+                disabled={connectionStarting}
+                onClick={handlePlatoonSignIn}
+                type="button"
+              >
+                {connectionStarting ? "Opening Platoon…" : "Sign in with Platoon"}
+              </button>
             ) : (
               <span>Sign-in connection pending</span>
             )}
