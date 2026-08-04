@@ -17,6 +17,7 @@ export type PublicEvent = {
   timeZone: string;
   location: string | null;
   category: PublicEventCategory;
+  flyer: PlatoonPublicOrganizationEvent["flyer"];
 };
 
 export type EventCategoryOverrides = Record<
@@ -129,6 +130,7 @@ export function websiteEventsFromPlatoon(
           validColor(event.categoryColor) ??
           options.defaultCategoryColor,
       },
+      flyer: event.flyer,
     };
   });
 }

@@ -190,6 +190,16 @@
   padding: clamp(22px, 3vw, 34px);
 }
 
+.eventFlyerThumbnail {
+  align-self: center;
+  background: rgb(255 255 255 / 7%);
+  border: 1px solid rgb(255 255 255 / 13%);
+  flex: 0 0 58px;
+  height: 72px;
+  object-fit: cover;
+  width: 58px;
+}
+
 .calendarPanel { box-shadow: 0 28px 70px rgb(3 4 16 / 28%); }
 
 .calendarHeading {
@@ -386,6 +396,12 @@
   flex-direction: column;
   min-width: 64px;
   padding: 7px 8px;
+}
+
+.eventLeading {
+  align-items: center;
+  display: flex;
+  gap: 10px;
 }
 
 .eventDate span,
