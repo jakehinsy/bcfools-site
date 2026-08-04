@@ -13,6 +13,15 @@ export type PlatoonPublicOrganizationEvent = {
   categoryKey: string;
   categoryName: string;
   categoryColor: string | null;
+  flyer: {
+    key: string;
+    originalMimeType: "application/pdf" | "image/jpeg" | "image/png";
+    pageCount: number;
+    thumbnailUrl: string;
+    detailUrl: string;
+    fullUrl: string;
+    originalUrl: string;
+  } | null;
 };
 
 export type PublicEventRange = {
@@ -84,6 +93,50 @@ function externalUrl(value: unknown): string | null {
   }
 }
 
+function flyerUrl(value: unknown, flyerKey: string, rendition: string): string | null {
+  const candidate = requiredString(value, 2048);
+  if (!candidate) return null;
+  try {
+    const url = new URL(candidate);
+    const localHttp = url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+    const normalized = url.toString();
+    return (url.protocol === "https:" || localHttp) && !url.username && !url.password && normalized.length <= 2048 &&
+      url.pathname.endsWith(`/organization-event-flyers/${flyerKey}/${rendition}`)
+      ? normalized
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseFlyer(value: unknown): PlatoonPublicOrganizationEvent["flyer"] | undefined {
+  if (value === undefined || value === null) return null;
+  const flyer = record(value);
+  if (!flyer) return undefined;
+  const key = uuid(flyer.key);
+  const originalMimeType = flyer.originalMimeType;
+  const pageCount = flyer.pageCount;
+  if (
+    !key ||
+    !["application/pdf", "image/jpeg", "image/png"].includes(String(originalMimeType)) ||
+    !Number.isInteger(pageCount) || Number(pageCount) < 1 || Number(pageCount) > 100
+  ) return undefined;
+  const thumbnailUrl = flyerUrl(flyer.thumbnailUrl, key, "thumbnail");
+  const detailUrl = flyerUrl(flyer.detailUrl, key, "detail");
+  const fullUrl = flyerUrl(flyer.fullUrl, key, "full");
+  const originalUrl = flyerUrl(flyer.originalUrl, key, "original");
+  if (!thumbnailUrl || !detailUrl || !fullUrl || !originalUrl) return undefined;
+  return {
+    key,
+    originalMimeType: originalMimeType as "application/pdf" | "image/jpeg" | "image/png",
+    pageCount: Number(pageCount),
+    thumbnailUrl,
+    detailUrl,
+    fullUrl,
+    originalUrl,
+  };
+}
+
 function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
   const event = record(value);
   if (!event) return null;
@@ -101,6 +154,7 @@ function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
   const categoryKey = uuid(event.categoryKey);
   const categoryName = requiredString(event.categoryName, 120);
   const categoryColor = optionalString(event.categoryColor, 7)?.toLowerCase() ?? null;
+  const flyer = parseFlyer(event.flyer);
 
   if (
     !eventKey ||
@@ -119,7 +173,8 @@ function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
     !categoryKey ||
     !categoryName ||
     (event.categoryColor !== null &&
-      (!categoryColor || !/^#[0-9a-f]{6}$/.test(categoryColor)))
+      (!categoryColor || !/^#[0-9a-f]{6}$/.test(categoryColor))) ||
+    flyer === undefined
   ) return null;
 
   return {
@@ -137,6 +192,7 @@ function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
     categoryKey,
     categoryName,
     categoryColor,
+    flyer,
   };
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import {
@@ -77,10 +78,22 @@ function EventCardContent({ event }: { event: PublicEvent }) {
   const date = eventDate(event);
   return (
     <>
-      <div className={styles.eventDate}>
-        <span>{date.toLocaleDateString("en-US", { weekday: "short" })}</span>
-        <strong>{date.getDate()}</strong>
-        <small>{date.toLocaleDateString("en-US", { month: "short" })}</small>
+      <div className={styles.eventLeading}>
+        <div className={styles.eventDate}>
+          <span>{date.toLocaleDateString("en-US", { weekday: "short" })}</span>
+          <strong>{date.getDate()}</strong>
+          <small>{date.toLocaleDateString("en-US", { month: "short" })}</small>
+        </div>
+        {event.flyer && (
+          <Image
+            alt=""
+            className={styles.eventFlyerThumbnail}
+            height={72}
+            src={event.flyer.thumbnailUrl}
+            unoptimized
+            width={58}
+          />
+        )}
       </div>
       <div className={styles.eventCardBody}>
         <p className={styles.eventCategory}>
@@ -97,11 +110,7 @@ function EventCardContent({ event }: { event: PublicEvent }) {
         {event.location && <span>{event.location}</span>}
         <span>{publicEventTimeLabel(event)}</span>
       </div>
-      {event.externalUrl && (
-        <span className={styles.eventAction}>
-          <ArrowIcon />
-        </span>
-      )}
+      <span className={styles.eventAction}><ArrowIcon /></span>
     </>
   );
 }
@@ -329,24 +338,15 @@ export function EventsCalendar({
           {upcomingEvents.length > 0 ? (
             <div className={styles.eventCards}>
               {upcomingEvents.slice(0, 5).map((event) => {
-                if (event.externalUrl) {
-                  return (
-                    <a
-                      aria-label={`${event.title}: open external event page in a new tab`}
-                      className={`${styles.eventCard} ${styles.eventCardLinked}`}
-                      href={event.externalUrl}
-                      key={event.id}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      <EventCardContent event={event} />
-                    </a>
-                  );
-                }
                 return (
-                  <article className={styles.eventCard} key={event.id}>
+                  <Link
+                    aria-label={`${event.title}: view event details`}
+                    className={`${styles.eventCard} ${styles.eventCardLinked}`}
+                    href={`/events/${event.id}`}
+                    key={event.id}
+                  >
                     <EventCardContent event={event} />
-                  </article>
+                  </Link>
                 );
               })}
             </div>
@@ -368,7 +368,7 @@ export function EventsCalendar({
               </p>
               <div className={styles.emptyStateActions}>
                 {feedStatus === "unavailable" ? (
-                  <a href="/events">Try again <ArrowIcon /></a>
+                  <Link href="/events">Try again <ArrowIcon /></Link>
                 ) : (
                   <a href={siteConfig.links.instagram} rel="noreferrer" target="_blank">
                     Follow for updates <ArrowIcon />

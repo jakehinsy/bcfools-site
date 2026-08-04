@@ -200,12 +200,12 @@ export default function Home() {
                 </p>
               </div>
               <div className="events__actions">
-                <a
+                <Link
                   className="button button--light"
                   href="/events"
                 >
                   Open the calendar <ArrowIcon />
-                </a>
+                </Link>
                 <Link
                   className="text-link text-link--light"
                   href={siteConfig.links.contact}

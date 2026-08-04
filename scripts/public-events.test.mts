@@ -45,6 +45,15 @@ const publicEvent = {
   categoryKey: "00000000-0000-0000-0000-000000000002",
   categoryName: "Training",
   categoryColor: "#2563EB",
+  flyer: {
+    key: "00000000-0000-4000-8000-000000000003",
+    originalMimeType: "application/pdf",
+    pageCount: 2,
+    thumbnailUrl: "https://admin.example.test/api/public/organization-event-flyers/00000000-0000-4000-8000-000000000003/thumbnail",
+    detailUrl: "https://admin.example.test/api/public/organization-event-flyers/00000000-0000-4000-8000-000000000003/detail",
+    fullUrl: "https://admin.example.test/api/public/organization-event-flyers/00000000-0000-4000-8000-000000000003/full",
+    originalUrl: "https://admin.example.test/api/public/organization-event-flyers/00000000-0000-4000-8000-000000000003/original",
+  },
   body: "must not reach the website",
   contactPhone: "must not reach the website",
 };
@@ -74,6 +83,7 @@ test("parses only the bounded public organization-event contract", () => {
         categoryKey: publicEvent.categoryKey,
         categoryName: "Training",
         categoryColor: "#2563eb",
+        flyer: publicEvent.flyer,
       }],
     },
   );
@@ -105,6 +115,14 @@ test("fails closed on the wrong tenant or malformed event fields", () => {
   assert.equal(parsePublicOrganizationEventsPayload({
     ...payload,
     events: [{ ...publicEvent, eventKey: "not-a-uuid" }],
+  }, "brew-city-fools"), null);
+  assert.equal(parsePublicOrganizationEventsPayload({
+    ...payload,
+    events: [{ ...publicEvent, flyer: { ...publicEvent.flyer, detailUrl: "http://admin.example.test/flyer" } }],
+  }, "brew-city-fools"), null);
+  assert.equal(parsePublicOrganizationEventsPayload({
+    ...payload,
+    events: [{ ...publicEvent, flyer: { ...publicEvent.flyer, pageCount: 101 } }],
   }, "brew-city-fools"), null);
   for (const externalUrl of [
     undefined,
@@ -216,6 +234,7 @@ test("maps public details and tenant category overrides into the website shape",
       label: "Fireground",
       color: "#ff5964",
     },
+    flyer: publicEvent.flyer,
   }]);
 });
 
@@ -231,6 +250,7 @@ test("formats all-day, legacy, timezone-aware, and multi-day events canonically"
     timeZone: "America/Chicago",
     location: null,
     category: { key: publicEvent.categoryKey, label: "Training", color: "#2563eb" },
+    flyer: null,
   };
   assert.equal(publicEventStartDateKey(baseEvent), "2026-08-10");
   assert.equal(publicEventEndDateKey(baseEvent), "2026-08-10");
