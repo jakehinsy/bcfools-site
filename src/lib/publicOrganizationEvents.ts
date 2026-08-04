@@ -34,6 +34,12 @@ export type PublicOrganizationEventsPayload = PublicEventRange & {
   events: PlatoonPublicOrganizationEvent[];
 };
 
+export type PublicEventFlyerRendition =
+  | "thumbnail"
+  | "detail"
+  | "full"
+  | "original";
+
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -51,6 +57,14 @@ function uuid(value: unknown): string | null {
   return candidate &&
     /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(candidate)
     ? candidate.toLowerCase()
+    : null;
+}
+
+function publicEventFlyerRendition(
+  value: unknown,
+): PublicEventFlyerRendition | null {
+  return ["thumbnail", "detail", "full", "original"].includes(String(value))
+    ? value as PublicEventFlyerRendition
     : null;
 }
 
@@ -279,5 +293,82 @@ export function publicEventsRequestInit(bypassSecret?: string): RequestInit {
       ...(bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : {}),
     },
     signal: AbortSignal.timeout(8_000),
+  };
+}
+
+export function publicEventFlyerProxyPath(
+  flyerKey: string,
+  rendition: PublicEventFlyerRendition,
+): string | null {
+  const key = uuid(flyerKey);
+  const safeRendition = publicEventFlyerRendition(rendition);
+  return key && safeRendition
+    ? `/api/platoon/event-flyers/${key}/${safeRendition}`
+    : null;
+}
+
+export function publicEventFlyerRequestUrl(
+  endpoint: string,
+  flyerKey: string,
+  rendition: PublicEventFlyerRendition,
+): URL | null {
+  const key = uuid(flyerKey);
+  const safeRendition = publicEventFlyerRendition(rendition);
+  if (!key || !safeRendition) return null;
+
+  try {
+    const endpointUrl = new URL(endpoint);
+    const localHttp = endpointUrl.protocol === "http:" &&
+      (endpointUrl.hostname === "localhost" || endpointUrl.hostname === "127.0.0.1");
+    if (
+      (endpointUrl.protocol !== "https:" && !localHttp) ||
+      endpointUrl.username ||
+      endpointUrl.password
+    ) return null;
+    return new URL(
+      `/api/public/organization-event-flyers/${key}/${safeRendition}`,
+      endpointUrl.origin,
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function publicEventFlyerRequestInit(
+  rendition: PublicEventFlyerRendition,
+  bypassSecret?: string,
+): RequestInit {
+  return {
+    cache: "no-store",
+    headers: {
+      accept: rendition === "original"
+        ? "application/pdf,image/jpeg,image/png"
+        : "image/webp",
+      ...(bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : {}),
+    },
+    signal: AbortSignal.timeout(8_000),
+  };
+}
+
+export function withPublicEventFlyerProxyUrls(
+  event: PlatoonPublicOrganizationEvent,
+): PlatoonPublicOrganizationEvent {
+  if (!event.flyer) return event;
+  const { key } = event.flyer;
+  const thumbnailUrl = publicEventFlyerProxyPath(key, "thumbnail");
+  const detailUrl = publicEventFlyerProxyPath(key, "detail");
+  const fullUrl = publicEventFlyerProxyPath(key, "full");
+  const originalUrl = publicEventFlyerProxyPath(key, "original");
+  if (!thumbnailUrl || !detailUrl || !fullUrl || !originalUrl) return event;
+
+  return {
+    ...event,
+    flyer: {
+      ...event.flyer,
+      thumbnailUrl,
+      detailUrl,
+      fullUrl,
+      originalUrl,
+    },
   };
 }

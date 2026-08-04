@@ -94,6 +94,7 @@ export default async function PublicEventDetailPage({ params }: { params: Promis
                 <Image
                   alt={`Flyer for ${event.title}`}
                   height={1280}
+                  loading="eager"
                   sizes="(max-width: 820px) 100vw, 40vw"
                   src={event.flyer.detailUrl}
                   unoptimized
