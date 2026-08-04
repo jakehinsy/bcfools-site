@@ -10,9 +10,13 @@ import {
 } from "../src/data/events.ts";
 import {
   parsePublicOrganizationEventsPayload,
+  publicEventFlyerProxyPath,
+  publicEventFlyerRequestInit,
+  publicEventFlyerRequestUrl,
   publicEventRange,
   publicEventsRequestInit,
   publicEventsRequestUrl,
+  withPublicEventFlyerProxyUrls,
 } from "../src/lib/publicOrganizationEvents.ts";
 
 const range = {
@@ -204,6 +208,63 @@ test("builds the canonical bounded request without accepting insecure remote URL
     publicEventsRequestUrl("http://admin.example.test/events", "brew-city-fools", range),
     null,
   );
+});
+
+test("routes public flyer renditions through the website proxy", () => {
+  const flyerKey = publicEvent.flyer.key;
+  assert.equal(
+    publicEventFlyerProxyPath(flyerKey, "detail"),
+    `/api/platoon/event-flyers/${flyerKey}/detail`,
+  );
+  assert.equal(publicEventFlyerProxyPath("not-a-uuid", "detail"), null);
+  assert.equal(
+    publicEventFlyerRequestUrl(
+      "https://admin.example.test/api/public/organization-events",
+      flyerKey,
+      "original",
+    )?.toString(),
+    `https://admin.example.test/api/public/organization-event-flyers/${flyerKey}/original`,
+  );
+  assert.equal(
+    publicEventFlyerRequestUrl("http://admin.example.test/events", flyerKey, "detail"),
+    null,
+  );
+
+  const imageRequest = publicEventFlyerRequestInit("detail", "preview-secret");
+  const imageHeaders = new Headers(imageRequest.headers);
+  assert.equal(imageRequest.cache, "no-store");
+  assert.equal(imageHeaders.get("accept"), "image/webp");
+  assert.equal(imageHeaders.get("x-vercel-protection-bypass"), "preview-secret");
+  assert.ok(imageRequest.signal instanceof AbortSignal);
+
+  const originalHeaders = new Headers(
+    publicEventFlyerRequestInit("original").headers,
+  );
+  assert.equal(
+    originalHeaders.get("accept"),
+    "application/pdf,image/jpeg,image/png",
+  );
+  assert.equal(originalHeaders.has("x-vercel-protection-bypass"), false);
+});
+
+test("rewrites every flyer rendition without changing non-flyer events", () => {
+  const parsed = parsePublicOrganizationEventsPayload({
+    organizationSlug: "brew-city-fools",
+    ...range,
+    events: [publicEvent],
+  }, "brew-city-fools");
+  assert.ok(parsed);
+
+  assert.deepEqual(withPublicEventFlyerProxyUrls(parsed.events[0]).flyer, {
+    ...publicEvent.flyer,
+    thumbnailUrl: `/api/platoon/event-flyers/${publicEvent.flyer.key}/thumbnail`,
+    detailUrl: `/api/platoon/event-flyers/${publicEvent.flyer.key}/detail`,
+    fullUrl: `/api/platoon/event-flyers/${publicEvent.flyer.key}/full`,
+    originalUrl: `/api/platoon/event-flyers/${publicEvent.flyer.key}/original`,
+  });
+
+  const withoutFlyer = { ...parsed.events[0], flyer: null };
+  assert.equal(withPublicEventFlyerProxyUrls(withoutFlyer), withoutFlyer);
 });
 
 test("maps public details and tenant category overrides into the website shape", () => {
