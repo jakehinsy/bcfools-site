@@ -83,7 +83,7 @@
   text-decoration: none;
 }
 
-.flyer img { aspect-ratio: 3 / 4; background: var(--white); display: block; object-fit: contain; width: 100%; }
+.flyer img { aspect-ratio: 3 / 4; background: var(--navy-950); display: block; object-fit: contain; width: 100%; }
 .flyer span { display: block; font-size: 0.66rem; font-weight: 900; letter-spacing: 0.1em; padding: 13px 15px; text-transform: uppercase; }
 
 .footer { background: #090b22; border-top: 1px solid rgb(255 255 255 / 10%); color: var(--white); padding-block: 28px; }
