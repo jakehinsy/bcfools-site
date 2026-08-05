@@ -4,6 +4,7 @@ import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { siteConfig } from "@/config/site";
+import { APPLICATION_SCHEMA_VERSION } from "@/lib/membershipApplicationContract";
 import { membershipFormDefaults } from "@/lib/platoonConnectionPayload";
 import type { MembershipProgramConfig, PlatoonConnectionSummary } from "@/lib/platoonMembership";
 import styles from "./join.module.css";
@@ -273,24 +274,37 @@ export function MembershipApplicationForm({
         body: JSON.stringify({
           submissionId: currentSubmissionId,
           application: {
-            schemaVersion: "2026-08-02",
+            schemaVersion: APPLICATION_SCHEMA_VERSION,
             applicationType,
             applicant: {
               firstName: formData.get("firstName"),
               lastName: formData.get("lastName"),
+              dateOfBirth: formData.get("dateOfBirth"),
               email: formData.get("email"),
               phone: formData.get("phone"),
+              mailingAddress: {
+                addressLine1: formData.get("addressLine1"),
+                addressLine2: formData.get("addressLine2"),
+                city: formData.get("city"),
+                state: formData.get("addressState"),
+                postalCode: formData.get("postalCode"),
+                countryCode: paymentConfig.program.defaultCountryCode,
+              },
             },
             fireService: {
               departmentName: formData.get("fireDepartment"),
               departmentState: formData.get("departmentState"),
               rank: formData.get("rank"),
               status: formData.get("fireServiceStatus"),
+            },
+            foolsHistory: {
               previousChapter: formData.get("previousChapter"),
               foolsId: formData.get("foolsId"),
+              foolsIdNotAssigned: false,
             },
             attestations: {
               adultFirefighter: formData.get("attestation") === "on",
+              version: "fools-membership-v1",
             },
             communications: {
               sms: {
@@ -419,6 +433,9 @@ export function MembershipApplicationForm({
 
       <fieldset className={styles.fieldset}>
         <legend>What can we help you with?</legend>
+        <p className={styles.legendHelp}>
+          {paymentConfig?.program.chapterName ?? siteConfig.name}{paymentConfig?.program.chapterState ? `, ${paymentConfig.program.chapterState}` : ""} | Application date is recorded when you submit.
+        </p>
         <div className={styles.typeGrid}>
           <label
             className={`${styles.typeCard} ${applicationType === "new" ? styles.typeCardSelected : ""}`}
@@ -485,6 +502,16 @@ export function MembershipApplicationForm({
             />
           </label>
           <label className={styles.field}>
+            <span>Date of birth</span>
+            <input
+              autoComplete="bday"
+              name="dateOfBirth"
+              required={paymentConfig?.program.requiresDateOfBirth ?? true}
+              type="date"
+            />
+            <small>Required by FOOLS International. Visible only to authorized membership administrators.</small>
+          </label>
+          <label className={styles.field}>
             <span>Email address</span>
             <input
               autoComplete="email"
@@ -505,6 +532,39 @@ export function MembershipApplicationForm({
               required
               type="tel"
             />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className={styles.fieldset}>
+        <legend>Mailing address</legend>
+        <p className={styles.legendHelp}>
+          FOOLS International uses this address for your membership record and member correspondence.
+        </p>
+        <div className={styles.fieldGrid}>
+          <label className={`${styles.field} ${styles.fieldWide}`}>
+            <span>Home address</span>
+            <input autoComplete="address-line1" name="addressLine1" required={paymentConfig?.program.requiresMailingAddress ?? true} />
+          </label>
+          <label className={`${styles.field} ${styles.fieldWide}`}>
+            <span>Address line 2</span>
+            <input autoComplete="address-line2" name="addressLine2" />
+            <small>Optional</small>
+          </label>
+          <label className={styles.field}>
+            <span>City</span>
+            <input autoComplete="address-level2" name="city" required={paymentConfig?.program.requiresMailingAddress ?? true} />
+          </label>
+          <label className={styles.field}>
+            <span>State</span>
+            <select autoComplete="address-level1" defaultValue={paymentConfig?.program.chapterState ?? "WI"} name="addressState" required={paymentConfig?.program.requiresMailingAddress ?? true}>
+              <option disabled value="">Select state</option>
+              {stateOptions.map((state) => <option key={state} value={state}>{state}</option>)}
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span>ZIP code</span>
+            <input autoComplete="postal-code" inputMode="numeric" name="postalCode" pattern="[0-9]{5}(-[0-9]{4})?" required={paymentConfig?.program.requiresMailingAddress ?? true} />
           </label>
         </div>
       </fieldset>
@@ -609,9 +669,7 @@ export function MembershipApplicationForm({
         <label className={styles.attestation}>
           <input name="attestation" required type="checkbox" />
           <span>
-            I attest that I am at least 18 years old and am a current or retired
-            firefighter. I understand Brew City FOOLS will use this information
-            to review my membership and contact me about it.
+            By submitting this application, I attest that I am at least 18 years old and am a current or retired firefighter. I will keep FOOLS International and Brew City FOOLS informed of changes to my contact information, fire department rank, or department affiliation.
           </span>
         </label>
         <div className={styles.smsConsent}>

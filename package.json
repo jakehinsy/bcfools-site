@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npm run test:membership-connect && npm run test:membership-profile && npm run test:public-events",
+    "test": "npm run test:membership-connect && npm run test:membership-profile && npm run test:membership-application-fields && npm run test:public-events",
     "test:membership-connect": "node --test scripts/membership-connect-browser-binding.test.mjs",
     "test:membership-profile": "node --experimental-strip-types --test scripts/membership-profile-prefill.test.mts",
+    "test:membership-application-fields": "node --experimental-strip-types --test scripts/membership-application-fields.test.mts",
     "test:public-events": "node --experimental-strip-types --test scripts/public-events.test.mts"
   },
   "dependencies": {

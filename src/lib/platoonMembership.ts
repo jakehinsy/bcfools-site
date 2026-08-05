@@ -1,5 +1,7 @@
 import "server-only";
 
+import { APPLICATION_SCHEMA_VERSION } from "./membershipApplicationContract";
+
 import {
   createHash,
   createHmac,
@@ -14,13 +16,20 @@ import type { StoredPlatoonConnection } from "./platoonConnectionCookie";
 
 export { readConnection, storeConnection } from "./platoonConnectionCookie";
 
-export const APPLICATION_SCHEMA_VERSION = "2026-08-02";
+export { APPLICATION_SCHEMA_VERSION };
 export const APPLICATION_SIGNATURE_PATH = "/api/public/membership-applications";
 export const CONNECTION_EXCHANGE_PATH = "/api/public/membership-connections/exchange";
 export const CONNECTION_COOKIE = "bcf_platoon_connection";
 
 export type MembershipProgramConfig = {
   program: {
+    formSchemaVersion: string;
+    chapterName: string | null;
+    chapterState: string | null;
+    enabledApplicationTypes: Array<"new" | "renewal" | "transfer" | "contact_update" | "replacement_card">;
+    requiresDateOfBirth: boolean;
+    requiresMailingAddress: boolean;
+    defaultCountryCode: string;
     currency: string;
     newFeeMinor: number;
     renewalFeeMinor: number;
@@ -115,6 +124,11 @@ export async function membershipProgramConfiguration(): Promise<MembershipProgra
       !result?.program || !result?.square ||
       !Number.isInteger(result.program.newFeeMinor) ||
       !Number.isInteger(result.program.renewalFeeMinor) ||
+      result.program.formSchemaVersion !== APPLICATION_SCHEMA_VERSION ||
+      !Array.isArray(result.program.enabledApplicationTypes) ||
+      typeof result.program.requiresDateOfBirth !== "boolean" ||
+      typeof result.program.requiresMailingAddress !== "boolean" ||
+      !/^[A-Z]{2}$/.test(result.program.defaultCountryCode) ||
       !/^[A-Z]{3}$/.test(result.program.currency)
     ) return null;
     return result;
