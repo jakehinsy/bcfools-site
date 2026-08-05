@@ -17,19 +17,39 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 type ApplicationPayload = {
   schemaVersion: string;
   applicationType: "new" | "renewal";
-  applicant: { firstName: string; lastName: string; email: string; phone: string };
+  applicant: {
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+    email: string;
+    phone: string;
+    mailingAddress: {
+      addressLine1: string;
+      addressLine2: string | null;
+      city: string;
+      state: string;
+      postalCode: string;
+      countryCode: string;
+    };
+  };
   fireService: {
     departmentName: string;
     departmentState: string;
     rank: string;
     status: "active" | "retired";
-    previousChapter: string | null;
-    foolsId: string | null;
   };
-  attestations: { adultFirefighter: true };
+  foolsHistory: { previousChapter: string | null; foolsId: string | null; foolsIdNotAssigned: false };
+  attestations: { adultFirefighter: true; version: string };
   accountConnection?: { receipt: string };
   communications: {
     sms: { consent: boolean; disclosureVersion: string };
+  };
+  payment: {
+    provider: "square";
+    sourceToken: string;
+    renewalMode: "automatic" | "manual";
+    savedCardConsentVersion: string;
+    recurringConsentVersion: string | null;
   };
 };
 
@@ -46,27 +66,49 @@ function optionalString(value: unknown, maxLength: number): string | null | unde
   return requiredString(value, maxLength) ?? undefined;
 }
 
+function isAdultDateOfBirth(value: string): boolean {
+  const birthDate = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(birthDate.getTime()) || birthDate.toISOString().slice(0, 10) !== value) return false;
+  const today = new Date();
+  const adultCutoff = new Date(Date.UTC(today.getUTCFullYear() - 18, today.getUTCMonth(), today.getUTCDate()));
+  const oldestCutoff = new Date(Date.UTC(today.getUTCFullYear() - 110, today.getUTCMonth(), today.getUTCDate()));
+  return birthDate <= adultCutoff && birthDate >= oldestCutoff;
+}
+
 function parseSubmission(value: unknown): SubmissionBody | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const root = value as Record<string, unknown>;
   const application = root.application as Record<string, unknown> | undefined;
   const applicant = application?.applicant as Record<string, unknown> | undefined;
   const fireService = application?.fireService as Record<string, unknown> | undefined;
+  const foolsHistory = application?.foolsHistory as Record<string, unknown> | undefined;
   const attestations = application?.attestations as Record<string, unknown> | undefined;
   const communications = application?.communications as Record<string, unknown> | undefined;
   const sms = communications?.sms as Record<string, unknown> | undefined;
-  if (!application || !applicant || !fireService || !attestations || !sms) return null;
+  const payment = application?.payment as Record<string, unknown> | undefined;
+  const mailingAddress = applicant?.mailingAddress as Record<string, unknown> | undefined;
+  if (!application || !applicant || !mailingAddress || !fireService || !foolsHistory || !attestations || !sms || !payment) return null;
 
   const submissionId = requiredString(root.submissionId, 36);
   const firstName = requiredString(applicant.firstName, 100);
   const lastName = requiredString(applicant.lastName, 100);
   const email = requiredString(applicant.email, 320);
   const phone = requiredString(applicant.phone, 40);
+  const dateOfBirth = requiredString(applicant.dateOfBirth, 10);
+  const addressLine1 = requiredString(mailingAddress.addressLine1, 200);
+  const addressLine2 = optionalString(mailingAddress.addressLine2, 200);
+  const city = requiredString(mailingAddress.city, 120);
+  const addressState = requiredString(mailingAddress.state, 2)?.toUpperCase();
+  const postalCode = requiredString(mailingAddress.postalCode, 20)?.toUpperCase();
+  const countryCode = requiredString(mailingAddress.countryCode, 2)?.toUpperCase();
   const departmentName = requiredString(fireService.departmentName, 200);
   const departmentState = requiredString(fireService.departmentState, 2)?.toUpperCase();
   const rank = requiredString(fireService.rank, 120);
-  const previousChapter = optionalString(fireService.previousChapter, 200);
-  const foolsId = optionalString(fireService.foolsId, 120);
+  const previousChapter = optionalString(foolsHistory.previousChapter, 200);
+  const foolsId = optionalString(foolsHistory.foolsId, 120);
+  const sourceToken = requiredString(payment.sourceToken, 300);
+  const savedCardConsentVersion = requiredString(payment.savedCardConsentVersion, 160);
+  const recurringConsentVersion = optionalString(payment.recurringConsentVersion, 160);
 
   if (
     !submissionId ||
@@ -78,6 +120,11 @@ function parseSubmission(value: unknown): SubmissionBody | null {
     !email ||
     !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email) ||
     !phone ||
+    !dateOfBirth ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth) ||
+    !isAdultDateOfBirth(dateOfBirth) ||
+    !addressLine1 || addressLine2 === undefined || !city || !addressState || !/^[A-Z]{2}$/.test(addressState) ||
+    !postalCode || !/^\d{5}(-\d{4})?$/.test(postalCode) || countryCode !== "US" ||
     !departmentName ||
     !departmentState ||
     !/^[A-Z]{2}$/.test(departmentState) ||
@@ -85,9 +132,17 @@ function parseSubmission(value: unknown): SubmissionBody | null {
     (fireService.status !== "active" && fireService.status !== "retired") ||
     previousChapter === undefined ||
     foolsId === undefined ||
+    foolsHistory.foolsIdNotAssigned !== false ||
     attestations.adultFirefighter !== true ||
+    attestations.version !== "fools-membership-v1" ||
     typeof sms.consent !== "boolean" ||
-    sms.disclosureVersion !== siteConfig.membership.smsConsent.version
+    sms.disclosureVersion !== siteConfig.membership.smsConsent.version ||
+    payment.provider !== "square" ||
+    !sourceToken ||
+    (payment.renewalMode !== "automatic" && payment.renewalMode !== "manual") ||
+    !savedCardConsentVersion ||
+    (payment.renewalMode === "automatic" && !recurringConsentVersion) ||
+    (payment.renewalMode === "manual" && recurringConsentVersion !== null)
   ) return null;
 
   return {
@@ -95,21 +150,34 @@ function parseSubmission(value: unknown): SubmissionBody | null {
     application: {
       schemaVersion: APPLICATION_SCHEMA_VERSION,
       applicationType: application.applicationType,
-      applicant: { firstName, lastName, email, phone },
+      applicant: {
+        firstName,
+        lastName,
+        dateOfBirth,
+        email,
+        phone,
+        mailingAddress: { addressLine1, addressLine2, city, state: addressState, postalCode, countryCode },
+      },
       fireService: {
         departmentName,
         departmentState,
         rank,
         status: fireService.status,
-        previousChapter,
-        foolsId,
       },
-      attestations: { adultFirefighter: true },
+      foolsHistory: { previousChapter, foolsId, foolsIdNotAssigned: false },
+      attestations: { adultFirefighter: true, version: "fools-membership-v1" },
       communications: {
         sms: {
           consent: sms.consent,
           disclosureVersion: siteConfig.membership.smsConsent.version,
         },
+      },
+      payment: {
+        provider: "square",
+        sourceToken,
+        renewalMode: payment.renewalMode,
+        savedCardConsentVersion,
+        recurringConsentVersion: recurringConsentVersion ?? null,
       },
     },
   };
@@ -188,7 +256,10 @@ export async function POST(request: Request) {
       result.reviewStatus !== "submitted" ||
       result.paymentStatus !== "not_started" ||
       (result.nextAction !== "await_review" && result.nextAction !== "check_email") ||
-      typeof result.replayed !== "boolean"
+      typeof result.replayed !== "boolean" ||
+      !result.savedCard || typeof result.savedCard !== "object" ||
+      typeof (result.savedCard as Record<string, unknown>).lastFour !== "string" ||
+      (result.renewalMode !== "automatic" && result.renewalMode !== "manual")
     ) {
       return NextResponse.json({ error: { code: "INTAKE_UNAVAILABLE" } }, { status: 503 });
     }
@@ -199,6 +270,8 @@ export async function POST(request: Request) {
         paymentStatus: "not_started",
         nextAction: result.nextAction,
         replayed: result.replayed,
+        savedCard: result.savedCard,
+        renewalMode: result.renewalMode,
       },
       { status: 202 },
     );

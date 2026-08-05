@@ -367,7 +367,7 @@
   cursor: pointer;
   display: grid;
   gap: 12px;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr);
   min-height: 96px;
   padding: 18px;
   transition: border-color 160ms ease, background-color 160ms ease;
@@ -408,7 +408,9 @@
 .typeCard > b {
   color: var(--red-600);
   font-family: var(--font-oswald), Impact, sans-serif;
-  font-size: 1.55rem;
+  font-size: 1.4rem;
+  grid-column: 2;
+  justify-self: start;
 }
 
 .fieldGrid {
@@ -503,6 +505,97 @@
   font-size: 0.86rem;
 }
 
+.paymentUnavailable {
+  background: #fff1f1;
+  border: 1px solid #e2a1a5;
+  color: #6e151b;
+  margin-top: 20px;
+  padding: 18px 20px;
+}
+
+.paymentUnavailable strong,
+.squareField > span {
+  color: var(--navy-950);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.paymentUnavailable p {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  margin: 5px 0 0;
+}
+
+.squareField {
+  margin-top: 20px;
+}
+
+.squareField > div {
+  background: var(--white);
+  border: 1px solid #d5d4d0;
+  margin-top: 8px;
+  min-height: 48px;
+  padding: 8px 12px;
+}
+
+.squareField small {
+  color: #73747d;
+  display: block;
+  font-size: 0.72rem;
+  margin-top: 7px;
+}
+
+.renewalChoices {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.renewalChoices > label {
+  align-items: flex-start;
+  border: 1px solid #d8d7d2;
+  cursor: pointer;
+  display: flex;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.renewalChoices input {
+  accent-color: var(--red-600);
+  flex: 0 0 auto;
+  height: 20px;
+  margin: 2px 0 0;
+  width: 20px;
+}
+
+.renewalChoices label > span {
+  display: grid;
+  gap: 5px;
+}
+
+.renewalChoices strong {
+  color: var(--navy-950);
+  font-size: 0.9rem;
+}
+
+.renewalChoices b {
+  color: var(--red-600);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.renewalChoices small {
+  color: #62636d;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.renewalChoices > label:has(input:checked) {
+  background: #fff4f4;
+  border-color: var(--red-600);
+}
+
 .smsConsent {
   align-items: flex-start;
   border: 1px solid #d8d7d2;
@@ -561,22 +654,26 @@
 }
 
 .checkoutSummary {
-  align-items: center;
   background: var(--navy-950);
   color: var(--white);
-  display: flex;
-  justify-content: space-between;
   margin-top: 38px;
   padding: 22px 24px;
 }
 
-.checkoutSummary > div {
-  display: flex;
-  flex-direction: column;
+.checkoutSummary dl {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
 }
 
-.checkoutSummary span,
-.checkoutSummary small {
+.checkoutSummary dl > div {
+  display: grid;
+  gap: 5px;
+}
+
+.checkoutSummary dt,
+.checkoutSummary > small {
   color: rgb(255 255 255 / 60%);
   font-size: 0.64rem;
   font-weight: 800;
@@ -584,18 +681,17 @@
   text-transform: uppercase;
 }
 
-.checkoutSummary strong {
+.checkoutSummary dd {
+  color: var(--white);
   font-family: var(--font-oswald), Impact, sans-serif;
-  font-size: 1.2rem;
-  letter-spacing: 0.03em;
-  margin-block: 4px;
-  text-transform: uppercase;
+  font-size: 1.55rem;
+  margin: 0;
 }
 
-.checkoutSummary > b {
-  color: #ff4b57;
-  font-family: var(--font-oswald), Impact, sans-serif;
-  font-size: 2.1rem;
+.checkoutSummary > small {
+  display: block;
+  line-height: 1.5;
+  margin-top: 16px;
 }
 
 .submitButton {
@@ -669,21 +765,6 @@
   font-size: 0.84rem;
   line-height: 1.55;
   margin: 5px 0 0;
-}
-
-.fallback {
-  color: #6d6e77;
-  font-size: 0.78rem;
-  line-height: 1.5;
-  margin: 18px 0 0;
-  text-align: center;
-}
-
-.fallback a {
-  color: var(--red-600);
-  font-weight: 800;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .footer {
@@ -820,8 +901,11 @@
   }
 
   .checkoutSummary {
-    align-items: flex-start;
-    gap: 18px;
+    padding: 20px;
+  }
+
+  .checkoutSummary dl {
+    grid-template-columns: 1fr;
   }
 
   .footerInner {
