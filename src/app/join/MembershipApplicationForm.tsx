@@ -595,16 +595,13 @@ export function MembershipApplicationForm({
         <div className={styles.renewalChoices} role="radiogroup" aria-label="Membership renewal choice">
           <label>
             <input disabled={!paymentConfig?.square.annualRenewalReady} name="renewalMode" required type="radio" value="automatic" />
-            <span><strong>Auto-renew annually</strong>{paymentConfig?.square.annualRenewalReady ? <b>Recommended</b> : null}<small>{paymentConfig?.square.annualRenewalReady ? "After the first paid year, charge the saved card annually at the renewal price shown before each renewal. We will email you before charging, and you can turn auto-renew off in Platoon." : "Automatic renewal is not available yet. Choose manual renewal to continue."}</small></span>
+            <span><strong>Auto-renew annually</strong>{paymentConfig?.square.annualRenewalReady ? <b>Recommended</b> : null}<small>{paymentConfig?.square.annualRenewalReady ? "After the first paid year, charge the saved card annually at the renewal price shown before each renewal. This authorization continues until you turn it off in Platoon. Brew City uses the successful approval-payment anniversary and a 30-day failed-payment grace period." : "Automatic renewal is not available yet. Choose manual renewal to continue."}</small></span>
           </label>
           <label>
             <input name="renewalMode" required type="radio" value="manual" />
             <span><strong>Renew manually</strong><small>Do not charge the card automatically. Platoon will remind you before the membership expires.</small></span>
           </label>
         </div>
-        <p className={styles.recurringDisclosure}>
-          Auto-renew authorization continues annually until it is turned off. Brew City uses the successful approval-payment anniversary and a 30-day failed-payment grace period.
-        </p>
       </fieldset>
 
       <fieldset className={styles.fieldset}>
@@ -670,13 +667,6 @@ export function MembershipApplicationForm({
         </div>
       ) : null}
 
-      <p className={styles.fallback}>
-        Need to submit an application today?{" "}
-        <a href={siteConfig.links.application} rel="noreferrer" target="_blank">
-          Use the current application form
-        </a>
-        .
-      </p>
       </form>
     </>
   );

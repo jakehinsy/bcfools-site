@@ -18,7 +18,6 @@ export const siteConfig = {
   ],
   links: {
     applicationRoute: "/join",
-    application: "https://www.jotform.com/form/211474845726058",
     renewal: "https://brewcityfools.com/shop/membership-renewal/",
     newMembership: "https://brewcityfools.com/shop/new-membership/",
     contact: "/contact",

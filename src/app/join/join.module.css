@@ -520,8 +520,7 @@
   font-weight: 800;
 }
 
-.paymentUnavailable p,
-.recurringDisclosure {
+.paymentUnavailable p {
   font-size: 0.78rem;
   line-height: 1.55;
   margin: 5px 0 0;
@@ -595,10 +594,6 @@
 .renewalChoices > label:has(input:checked) {
   background: #fff4f4;
   border-color: var(--red-600);
-}
-
-.recurringDisclosure {
-  color: #6b6c76;
 }
 
 .smsConsent {
@@ -770,21 +765,6 @@
   font-size: 0.84rem;
   line-height: 1.55;
   margin: 5px 0 0;
-}
-
-.fallback {
-  color: #6d6e77;
-  font-size: 0.78rem;
-  line-height: 1.5;
-  margin: 18px 0 0;
-  text-align: center;
-}
-
-.fallback a {
-  color: var(--red-600);
-  font-weight: 800;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .footer {
