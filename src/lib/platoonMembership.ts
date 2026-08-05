@@ -19,6 +19,28 @@ export const APPLICATION_SIGNATURE_PATH = "/api/public/membership-applications";
 export const CONNECTION_EXCHANGE_PATH = "/api/public/membership-connections/exchange";
 export const CONNECTION_COOKIE = "bcf_platoon_connection";
 
+export type MembershipProgramConfig = {
+  program: {
+    currency: string;
+    newFeeMinor: number;
+    renewalFeeMinor: number;
+    newPaymentRequired: boolean;
+    renewalPaymentRequired: boolean;
+    renewalSchedule: "anniversary" | "fixed_date";
+    renewalGraceDays: number;
+    savedCardConsentVersion: string | null;
+    recurringConsentVersion: string | null;
+    membershipSupportEmail: string | null;
+  };
+  square: {
+    ready: boolean;
+    environment?: "sandbox" | "production";
+    applicationId?: string;
+    locationId?: string;
+    annualRenewalReady?: boolean;
+  };
+};
+
 const PROGRAM_KEY_PATTERN = /^mpk_[A-Za-z0-9_-]{12,80}$/;
 const PROGRAM_HANDLE_PATTERN = /^mpp_[A-Za-z0-9_-]{12,80}$/;
 const COOKIE_CONTEXT = "bcfools-membership-connection-v1";
@@ -74,6 +96,31 @@ export function intakeConfiguration() {
   );
   const bypassSecret = process.env.PLATOON_MEMBERSHIP_INTAKE_BYPASS_SECRET?.trim();
   return { endpoint, programKeyId, secret, bypassSecret };
+}
+
+export async function membershipProgramConfiguration(): Promise<MembershipProgramConfig | null> {
+  try {
+    const intake = intakeConfiguration();
+    const { programHandle } = connectionConfiguration();
+    const endpoint = new URL("/api/public/membership-program-config", intake.endpoint.origin);
+    endpoint.searchParams.set("handle", programHandle);
+    const response = await fetch(endpoint, {
+      headers: intake.bypassSecret ? { "x-vercel-protection-bypass": intake.bypassSecret } : undefined,
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return null;
+    const result = await response.json() as MembershipProgramConfig;
+    if (
+      !result?.program || !result?.square ||
+      !Number.isInteger(result.program.newFeeMinor) ||
+      !Number.isInteger(result.program.renewalFeeMinor) ||
+      !/^[A-Z]{3}$/.test(result.program.currency)
+    ) return null;
+    return result;
+  } catch {
+    return null;
+  }
 }
 
 export function connectionConfiguration() {

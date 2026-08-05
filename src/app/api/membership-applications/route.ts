@@ -31,6 +31,13 @@ type ApplicationPayload = {
   communications: {
     sms: { consent: boolean; disclosureVersion: string };
   };
+  payment: {
+    provider: "square";
+    sourceToken: string;
+    renewalMode: "automatic" | "manual";
+    savedCardConsentVersion: string;
+    recurringConsentVersion: string | null;
+  };
 };
 
 type SubmissionBody = { submissionId: string; application: ApplicationPayload };
@@ -55,7 +62,8 @@ function parseSubmission(value: unknown): SubmissionBody | null {
   const attestations = application?.attestations as Record<string, unknown> | undefined;
   const communications = application?.communications as Record<string, unknown> | undefined;
   const sms = communications?.sms as Record<string, unknown> | undefined;
-  if (!application || !applicant || !fireService || !attestations || !sms) return null;
+  const payment = application?.payment as Record<string, unknown> | undefined;
+  if (!application || !applicant || !fireService || !attestations || !sms || !payment) return null;
 
   const submissionId = requiredString(root.submissionId, 36);
   const firstName = requiredString(applicant.firstName, 100);
@@ -67,6 +75,9 @@ function parseSubmission(value: unknown): SubmissionBody | null {
   const rank = requiredString(fireService.rank, 120);
   const previousChapter = optionalString(fireService.previousChapter, 200);
   const foolsId = optionalString(fireService.foolsId, 120);
+  const sourceToken = requiredString(payment.sourceToken, 300);
+  const savedCardConsentVersion = requiredString(payment.savedCardConsentVersion, 160);
+  const recurringConsentVersion = optionalString(payment.recurringConsentVersion, 160);
 
   if (
     !submissionId ||
@@ -87,7 +98,13 @@ function parseSubmission(value: unknown): SubmissionBody | null {
     foolsId === undefined ||
     attestations.adultFirefighter !== true ||
     typeof sms.consent !== "boolean" ||
-    sms.disclosureVersion !== siteConfig.membership.smsConsent.version
+    sms.disclosureVersion !== siteConfig.membership.smsConsent.version ||
+    payment.provider !== "square" ||
+    !sourceToken ||
+    (payment.renewalMode !== "automatic" && payment.renewalMode !== "manual") ||
+    !savedCardConsentVersion ||
+    (payment.renewalMode === "automatic" && !recurringConsentVersion) ||
+    (payment.renewalMode === "manual" && recurringConsentVersion !== null)
   ) return null;
 
   return {
@@ -110,6 +127,13 @@ function parseSubmission(value: unknown): SubmissionBody | null {
           consent: sms.consent,
           disclosureVersion: siteConfig.membership.smsConsent.version,
         },
+      },
+      payment: {
+        provider: "square",
+        sourceToken,
+        renewalMode: payment.renewalMode,
+        savedCardConsentVersion,
+        recurringConsentVersion: recurringConsentVersion ?? null,
       },
     },
   };
@@ -188,7 +212,10 @@ export async function POST(request: Request) {
       result.reviewStatus !== "submitted" ||
       result.paymentStatus !== "not_started" ||
       (result.nextAction !== "await_review" && result.nextAction !== "check_email") ||
-      typeof result.replayed !== "boolean"
+      typeof result.replayed !== "boolean" ||
+      !result.savedCard || typeof result.savedCard !== "object" ||
+      typeof (result.savedCard as Record<string, unknown>).lastFour !== "string" ||
+      (result.renewalMode !== "automatic" && result.renewalMode !== "manual")
     ) {
       return NextResponse.json({ error: { code: "INTAKE_UNAVAILABLE" } }, { status: 503 });
     }
@@ -199,6 +226,8 @@ export async function POST(request: Request) {
         paymentStatus: "not_started",
         nextAction: result.nextAction,
         replayed: result.replayed,
+        savedCard: result.savedCard,
+        renewalMode: result.renewalMode,
       },
       { status: 202 },
     );

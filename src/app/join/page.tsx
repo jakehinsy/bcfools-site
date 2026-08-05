@@ -6,6 +6,7 @@ import {
   CONNECTION_COOKIE,
   connectionConfiguration,
   connectionSummary,
+  membershipProgramConfiguration,
   programCredentials,
   readConnection,
 } from "@/lib/platoonMembership";
@@ -45,6 +46,10 @@ export default async function JoinPage({
     ? rawConnectionSupportReference
     : null;
   let initialConnection = null;
+  const paymentConfig = await membershipProgramConfiguration();
+  const membershipCurrency = paymentConfig?.program.currency ?? "USD";
+  const formatMembershipPrice = (amountMinor: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: membershipCurrency }).format(amountMinor / 100);
   let platoonConnectionOrigin: string | null = null;
   try {
     const cookieStore = await cookies();
@@ -92,10 +97,10 @@ export default async function JoinPage({
               </p>
               <div className={styles.heroPrices} aria-label="Membership prices">
                 <span>
-                  New member <strong>${siteConfig.membership.newMemberPrice}</strong>
+                  New member <strong>{formatMembershipPrice(paymentConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100)}</strong>
                 </span>
                 <span>
-                  Annual renewal <strong>${siteConfig.membership.renewalPrice}</strong>
+                  Annual renewal <strong>{formatMembershipPrice(paymentConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100)}</strong>
                 </span>
               </div>
             </div>
@@ -111,22 +116,22 @@ export default async function JoinPage({
                 <li>
                   <span>01</span>
                   <div>
-                    <strong>Tell us about yourself</strong>
-                    <p>A few contact and fire-service details are all we need.</p>
+                    <strong>Apply and save your card</strong>
+                    <p>Submit your details and securely save a card with Square. Due today: $0.</p>
                   </div>
                 </li>
                 <li>
                   <span>02</span>
                   <div>
                     <strong>Chapter review</strong>
-                    <p>A designated chapter officer reviews every application.</p>
+                    <p>A designated chapter officer reviews every application. Nothing is charged during review.</p>
                   </div>
                 </li>
                 <li>
                   <span>03</span>
                   <div>
-                    <strong>Finish membership</strong>
-                    <p>Approved applicants receive separate account and payment steps.</p>
+                    <strong>Approval and activation</strong>
+                    <p>If approved, the saved card is charged and we email your receipt and secure Platoon setup link.</p>
                   </div>
                 </li>
               </ol>
@@ -145,6 +150,7 @@ export default async function JoinPage({
                 initialConnection={initialConnection}
                 platoonConnectionOrigin={platoonConnectionOrigin}
                 platoonSignInAvailable={Boolean(platoonConnectionOrigin)}
+                paymentConfig={paymentConfig}
               />
             </div>
           </div>
