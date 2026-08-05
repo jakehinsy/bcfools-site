@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import {
@@ -77,31 +78,42 @@ function EventCardContent({ event }: { event: PublicEvent }) {
   const date = eventDate(event);
   return (
     <>
-      <div className={styles.eventDate}>
-        <span>{date.toLocaleDateString("en-US", { weekday: "short" })}</span>
-        <strong>{date.getDate()}</strong>
-        <small>{date.toLocaleDateString("en-US", { month: "short" })}</small>
+      <div className={styles.eventCardTop}>
+        <div className={styles.eventDate}>
+          <span>{date.toLocaleDateString("en-US", { weekday: "short" })}</span>
+          <strong>{date.getDate()}</strong>
+          <small>{date.toLocaleDateString("en-US", { month: "short" })}</small>
+        </div>
+        <div className={styles.eventCardBody}>
+          <p className={styles.eventCategory}>
+            <i
+              aria-hidden="true"
+              style={{ backgroundColor: event.category.color }}
+            />
+            {event.category.label}
+          </p>
+          <h3>{event.title}</h3>
+          {event.summary && !event.flyer && (
+            <p className={styles.eventSummary}>{event.summary}</p>
+          )}
+          {event.location && <span>{event.location}</span>}
+          <span>{publicEventTimeLabel(event)}</span>
+        </div>
       </div>
-      <div className={styles.eventCardBody}>
-        <p className={styles.eventCategory}>
-          <i
-            aria-hidden="true"
-            style={{ backgroundColor: event.category.color }}
+      {event.flyer && (
+        <div className={styles.eventFlyerPreview}>
+          <Image
+            alt={`Flyer for ${event.title}`}
+            height={1280}
+            sizes="(max-width: 980px) 100vw, 42vw"
+            src={event.flyer.detailUrl}
+            unoptimized
+            width={960}
           />
-          {event.category.label}
-        </p>
-        <h3>{event.title}</h3>
-        {event.summary && (
-          <p className={styles.eventSummary}>{event.summary}</p>
-        )}
-        {event.location && <span>{event.location}</span>}
-        <span>{publicEventTimeLabel(event)}</span>
-      </div>
-      {event.externalUrl && (
-        <span className={styles.eventAction}>
-          <ArrowIcon />
-        </span>
+          <span>Event flyer</span>
+        </div>
       )}
+      <span className={styles.eventAction}><ArrowIcon /></span>
     </>
   );
 }
@@ -120,6 +132,7 @@ export function EventsCalendar({
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const categories = useMemo(() => {
     const unique = new Map<string, PublicEventCategory>();
@@ -160,6 +173,19 @@ export function EventsCalendar({
   const upcomingEvents = filteredEvents.filter((event) =>
     publicEventIsUpcoming(event, now, calendarTimeZone)
   );
+  const selectedDateEvents = selectedDate
+    ? filteredEvents.filter((event) => eventOccursOnDate(event, selectedDate))
+    : [];
+  const displayedEvents = selectedDate
+    ? selectedDateEvents
+    : upcomingEvents.slice(0, 5);
+  const selectedDateLabel = selectedDate
+    ? new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
 
   const monthLabel = visibleMonth.toLocaleDateString("en-US", {
     month: "long",
@@ -190,6 +216,7 @@ export function EventsCalendar({
   });
 
   function changeMonth(offset: number) {
+    setSelectedDate(null);
     setVisibleMonth(
       (current) =>
         new Date(current.getFullYear(), current.getMonth() + offset, 1),
@@ -203,7 +230,10 @@ export function EventsCalendar({
           <button
             aria-pressed={activeCategory === "all"}
             className={activeCategory === "all" ? styles.filterActive : ""}
-            onClick={() => setActiveCategory("all")}
+            onClick={() => {
+              setActiveCategory("all");
+              setSelectedDate(null);
+            }}
             type="button"
           >
             <CalendarIcon />
@@ -214,7 +244,10 @@ export function EventsCalendar({
               aria-pressed={activeCategory === category.key}
               className={activeCategory === category.key ? styles.filterActive : ""}
               key={category.key}
-              onClick={() => setActiveCategory(category.key)}
+              onClick={() => {
+                setActiveCategory(category.key);
+                setSelectedDate(null);
+              }}
               type="button"
             >
               <span
@@ -277,26 +310,51 @@ export function EventsCalendar({
                 cellDate.getMonth() === today.getMonth() &&
                 cellDate.getDate() === today.getDate();
 
-              return (
-                <div
-                  className={`${styles.calendarDay} ${
-                    monthOffset !== 0 ? styles.calendarDayMuted : ""
-                  } ${isToday ? styles.calendarDayToday : ""}`}
-                  key={`${key}-${index}`}
-                >
+              const className = `${styles.calendarDay} ${
+                monthOffset !== 0 ? styles.calendarDayMuted : ""
+              } ${isToday ? styles.calendarDayToday : ""} ${
+                selectedDate === key ? styles.calendarDaySelected : ""
+              }`;
+              const content = (
+                <>
                   <span>{day}</span>
                   {dayEvents.length > 0 && (
                     <div className={styles.dayDots}>
                       {dayEvents.slice(0, 3).map((event) => (
                         <i
-                          aria-label={`${event.title}: ${event.category.label}`}
+                          aria-hidden="true"
                           key={event.id}
-                          role="img"
                           style={{ backgroundColor: event.category.color }}
                         />
                       ))}
                     </div>
                   )}
+                </>
+              );
+
+              return dayEvents.length > 0 ? (
+                <button
+                  aria-label={`${cellDate.toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}: ${dayEvents.length} ${dayEvents.length === 1 ? "event" : "events"}`}
+                  aria-pressed={selectedDate === key}
+                  className={className}
+                  key={`${key}-${index}`}
+                  onClick={() => {
+                    setSelectedDate(key);
+                    if (monthOffset !== 0) {
+                      setVisibleMonth(new Date(cellDate.getFullYear(), cellDate.getMonth(), 1));
+                    }
+                  }}
+                  type="button"
+                >
+                  {content}
+                </button>
+              ) : (
+                <div className={className} key={`${key}-${index}`}>
+                  {content}
                 </div>
               );
             })}
@@ -317,36 +375,39 @@ export function EventsCalendar({
           )}
         </section>
 
-        <section className={styles.eventList} aria-labelledby="upcoming-events">
+        <section className={styles.eventList} aria-labelledby="event-list-heading">
           <div className={styles.eventListHeading}>
             <div>
-              <p>Next up</p>
-              <h2 id="upcoming-events">Upcoming events</h2>
+              <p>{selectedDate ? "Selected date" : "Next up"}</p>
+              <h2 id="event-list-heading">
+                {selectedDateLabel ?? "Upcoming events"}
+              </h2>
             </div>
-            <span>{monthEvents.length} this month</span>
+            {selectedDate ? (
+              <button
+                className={styles.showUpcoming}
+                onClick={() => setSelectedDate(null)}
+                type="button"
+              >
+                Show upcoming
+              </button>
+            ) : (
+              <span>{monthEvents.length} this month</span>
+            )}
           </div>
 
-          {upcomingEvents.length > 0 ? (
+          {displayedEvents.length > 0 ? (
             <div className={styles.eventCards}>
-              {upcomingEvents.slice(0, 5).map((event) => {
-                if (event.externalUrl) {
-                  return (
-                    <a
-                      aria-label={`${event.title}: open external event page in a new tab`}
-                      className={`${styles.eventCard} ${styles.eventCardLinked}`}
-                      href={event.externalUrl}
-                      key={event.id}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      <EventCardContent event={event} />
-                    </a>
-                  );
-                }
+              {displayedEvents.map((event) => {
                 return (
-                  <article className={styles.eventCard} key={event.id}>
+                  <Link
+                    aria-label={`${event.title}: view event details`}
+                    className={`${styles.eventCard} ${styles.eventCardLinked}`}
+                    href={`/events/${event.id}`}
+                    key={event.id}
+                  >
                     <EventCardContent event={event} />
-                  </article>
+                  </Link>
                 );
               })}
             </div>
@@ -354,21 +415,29 @@ export function EventsCalendar({
             <div className={styles.emptyState}>
               <span className={styles.emptyStateIcon}><CalendarIcon /></span>
               <p>
-                {feedStatus === "ready" ? "Dates are being lined up" : "Calendar unavailable"}
+                {selectedDate
+                  ? "No events on this date"
+                  : feedStatus === "ready" ? "Dates are being lined up" : "Calendar unavailable"}
               </p>
               <h3>
-                {feedStatus === "ready"
+                {selectedDate
+                  ? "Choose another marked date or return to upcoming events."
+                  : feedStatus === "ready"
                   ? "The next reason to get together is coming."
                   : "Public events could not be loaded."}
               </h3>
               <p>
-                {feedStatus === "ready"
+                {selectedDate
+                  ? "Calendar dates with public events are marked with colored dots."
+                  : feedStatus === "ready"
                   ? "Public training, chapter gatherings, fundraisers, and community events will appear here as soon as Brew City posts them."
                   : "Please try this page again shortly or follow Brew City for current event updates."}
               </p>
               <div className={styles.emptyStateActions}>
-                {feedStatus === "unavailable" ? (
-                  <a href="/events">Try again <ArrowIcon /></a>
+                {selectedDate ? (
+                  <button type="button" onClick={() => setSelectedDate(null)}>Show upcoming</button>
+                ) : feedStatus === "unavailable" ? (
+                  <Link href="/events">Try again <ArrowIcon /></Link>
                 ) : (
                   <a href={siteConfig.links.instagram} rel="noreferrer" target="_blank">
                     Follow for updates <ArrowIcon />

@@ -5,6 +5,7 @@ import {
   publicEventRange,
   publicEventsRequestInit,
   publicEventsRequestUrl,
+  withPublicEventFlyerProxyUrls,
   type PlatoonPublicOrganizationEvent,
   type PublicEventRange,
 } from "./publicOrganizationEvents";
@@ -39,7 +40,7 @@ export async function loadPublicOrganizationEvents(
       rangeStart: payload.rangeStart,
       rangeEnd: payload.rangeEnd,
       status: "ready",
-      events: payload.events,
+      events: payload.events.map(withPublicEventFlyerProxyUrls),
     };
   } catch {
     return { ...range, status: "unavailable", events: [] };

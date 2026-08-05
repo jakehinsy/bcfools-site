@@ -190,6 +190,16 @@
   padding: clamp(22px, 3vw, 34px);
 }
 
+.eventFlyerThumbnail {
+  align-self: center;
+  background: rgb(255 255 255 / 7%);
+  border: 1px solid rgb(255 255 255 / 13%);
+  flex: 0 0 58px;
+  height: 72px;
+  object-fit: cover;
+  width: 58px;
+}
+
 .calendarPanel { box-shadow: 0 28px 70px rgb(3 4 16 / 28%); }
 
 .calendarHeading {
@@ -272,6 +282,23 @@
   position: relative;
 }
 
+button.calendarDay {
+  appearance: none;
+  background: rgb(255 255 255 / 2%);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+button.calendarDay:hover { background: rgb(255 255 255 / 8%); }
+
+.calendarDaySelected,
+button.calendarDaySelected:hover {
+  background: rgb(223 38 51 / 18%);
+  box-shadow: inset 0 0 0 2px #ff5964;
+}
+
 .calendarDayMuted { color: rgb(255 255 255 / 24%); }
 
 .calendarDayToday > span {
@@ -347,6 +374,18 @@
   text-transform: uppercase;
 }
 
+.showUpcoming {
+  background: transparent;
+  border: 0;
+  color: #ff747d;
+  cursor: pointer;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  padding: 8px 0 4px 12px;
+  text-transform: uppercase;
+}
+
 .eventCards {
   display: flex;
   flex-direction: column;
@@ -355,19 +394,15 @@
 }
 
 .eventCard {
-  align-items: center;
   background: rgb(255 255 255 / 4%);
   border: 1px solid rgb(255 255 255 / 10%);
-  display: grid;
-  gap: 18px;
-  grid-template-columns: auto 1fr;
+  display: block;
   padding: 14px;
 }
 
 .eventCardLinked {
   color: inherit;
   cursor: pointer;
-  padding-right: 48px;
   position: relative;
   text-decoration: none;
   transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
@@ -386,6 +421,14 @@
   flex-direction: column;
   min-width: 64px;
   padding: 7px 8px;
+}
+
+.eventCardTop {
+  align-items: center;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding-right: 34px;
 }
 
 .eventDate span,
@@ -442,6 +485,34 @@
   display: block;
   font-size: 0.74rem;
   margin-top: 3px;
+}
+
+.eventFlyerPreview {
+  background: var(--navy-950);
+  border: 1px solid rgb(255 255 255 / 18%);
+  margin-top: 14px;
+  overflow: hidden;
+  position: relative;
+}
+
+.eventFlyerPreview img {
+  display: block;
+  height: clamp(240px, 30vw, 360px);
+  object-fit: contain;
+  width: 100%;
+}
+
+.eventFlyerPreview span {
+  background: rgb(11 13 37 / 88%);
+  bottom: 0;
+  color: var(--white);
+  font-size: 0.58rem;
+  font-weight: 900;
+  left: 0;
+  letter-spacing: 0.1em;
+  padding: 9px 11px;
+  position: absolute;
+  text-transform: uppercase;
 }
 
 .eventAction {
@@ -509,9 +580,12 @@
 }
 
 .emptyStateActions a,
+.emptyStateActions button,
 .contactStrip a {
   align-items: center;
+  border: 0;
   color: var(--white);
+  cursor: pointer;
   display: inline-flex;
   font-size: 0.68rem;
   font-weight: 900;
@@ -520,7 +594,8 @@
   text-transform: uppercase;
 }
 
-.emptyStateActions a:first-child {
+.emptyStateActions a:first-child,
+.emptyStateActions button:first-child {
   background: var(--red-600);
   padding: 14px 18px;
 }
@@ -679,7 +754,10 @@
 
 .filters button:focus-visible,
 .calendarHeading button:focus-visible,
+.calendarDay:focus-visible,
+.showUpcoming:focus-visible,
 .emptyStateActions a:focus-visible,
+.emptyStateActions button:focus-visible,
 .contactStrip a:focus-visible,
 .eventCardLinked:focus-visible {
   outline: 3px solid #f0b323;
@@ -766,9 +844,13 @@
   .eventList { min-height: 500px; }
   .eventListHeading > span { display: none; }
 
+  .showUpcoming { max-width: 108px; text-align: right; }
+
   .eventCard {
     align-items: start;
   }
+
+  .eventFlyerPreview img { height: clamp(260px, 95vw, 400px); }
 
   .footerInner {
     align-items: flex-start;
@@ -780,7 +862,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .filters button,
-  .calendarHeading button { transition-duration: 0.01ms; }
+  .calendarHeading button,
+  .calendarDay { transition-duration: 0.01ms; }
   .loadingIntro,
   .loadingPanel,
   .loadingList { animation: none; }

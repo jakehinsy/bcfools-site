@@ -13,6 +13,15 @@ export type PlatoonPublicOrganizationEvent = {
   categoryKey: string;
   categoryName: string;
   categoryColor: string | null;
+  flyer: {
+    key: string;
+    originalMimeType: "application/pdf" | "image/jpeg" | "image/png";
+    pageCount: number;
+    thumbnailUrl: string;
+    detailUrl: string;
+    fullUrl: string;
+    originalUrl: string;
+  } | null;
 };
 
 export type PublicEventRange = {
@@ -24,6 +33,12 @@ export type PublicOrganizationEventsPayload = PublicEventRange & {
   organizationSlug: string;
   events: PlatoonPublicOrganizationEvent[];
 };
+
+export type PublicEventFlyerRendition =
+  | "thumbnail"
+  | "detail"
+  | "full"
+  | "original";
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -42,6 +57,14 @@ function uuid(value: unknown): string | null {
   return candidate &&
     /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(candidate)
     ? candidate.toLowerCase()
+    : null;
+}
+
+function publicEventFlyerRendition(
+  value: unknown,
+): PublicEventFlyerRendition | null {
+  return ["thumbnail", "detail", "full", "original"].includes(String(value))
+    ? value as PublicEventFlyerRendition
     : null;
 }
 
@@ -84,6 +107,50 @@ function externalUrl(value: unknown): string | null {
   }
 }
 
+function flyerUrl(value: unknown, flyerKey: string, rendition: string): string | null {
+  const candidate = requiredString(value, 2048);
+  if (!candidate) return null;
+  try {
+    const url = new URL(candidate);
+    const localHttp = url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+    const normalized = url.toString();
+    return (url.protocol === "https:" || localHttp) && !url.username && !url.password && normalized.length <= 2048 &&
+      url.pathname.endsWith(`/organization-event-flyers/${flyerKey}/${rendition}`)
+      ? normalized
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseFlyer(value: unknown): PlatoonPublicOrganizationEvent["flyer"] | undefined {
+  if (value === undefined || value === null) return null;
+  const flyer = record(value);
+  if (!flyer) return undefined;
+  const key = uuid(flyer.key);
+  const originalMimeType = flyer.originalMimeType;
+  const pageCount = flyer.pageCount;
+  if (
+    !key ||
+    !["application/pdf", "image/jpeg", "image/png"].includes(String(originalMimeType)) ||
+    !Number.isInteger(pageCount) || Number(pageCount) < 1 || Number(pageCount) > 100
+  ) return undefined;
+  const thumbnailUrl = flyerUrl(flyer.thumbnailUrl, key, "thumbnail");
+  const detailUrl = flyerUrl(flyer.detailUrl, key, "detail");
+  const fullUrl = flyerUrl(flyer.fullUrl, key, "full");
+  const originalUrl = flyerUrl(flyer.originalUrl, key, "original");
+  if (!thumbnailUrl || !detailUrl || !fullUrl || !originalUrl) return undefined;
+  return {
+    key,
+    originalMimeType: originalMimeType as "application/pdf" | "image/jpeg" | "image/png",
+    pageCount: Number(pageCount),
+    thumbnailUrl,
+    detailUrl,
+    fullUrl,
+    originalUrl,
+  };
+}
+
 function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
   const event = record(value);
   if (!event) return null;
@@ -101,6 +168,7 @@ function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
   const categoryKey = uuid(event.categoryKey);
   const categoryName = requiredString(event.categoryName, 120);
   const categoryColor = optionalString(event.categoryColor, 7)?.toLowerCase() ?? null;
+  const flyer = parseFlyer(event.flyer);
 
   if (
     !eventKey ||
@@ -119,7 +187,8 @@ function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
     !categoryKey ||
     !categoryName ||
     (event.categoryColor !== null &&
-      (!categoryColor || !/^#[0-9a-f]{6}$/.test(categoryColor)))
+      (!categoryColor || !/^#[0-9a-f]{6}$/.test(categoryColor))) ||
+    flyer === undefined
   ) return null;
 
   return {
@@ -137,6 +206,7 @@ function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
     categoryKey,
     categoryName,
     categoryColor,
+    flyer,
   };
 }
 
@@ -223,5 +293,82 @@ export function publicEventsRequestInit(bypassSecret?: string): RequestInit {
       ...(bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : {}),
     },
     signal: AbortSignal.timeout(8_000),
+  };
+}
+
+export function publicEventFlyerProxyPath(
+  flyerKey: string,
+  rendition: PublicEventFlyerRendition,
+): string | null {
+  const key = uuid(flyerKey);
+  const safeRendition = publicEventFlyerRendition(rendition);
+  return key && safeRendition
+    ? `/api/platoon/event-flyers/${key}/${safeRendition}`
+    : null;
+}
+
+export function publicEventFlyerRequestUrl(
+  endpoint: string,
+  flyerKey: string,
+  rendition: PublicEventFlyerRendition,
+): URL | null {
+  const key = uuid(flyerKey);
+  const safeRendition = publicEventFlyerRendition(rendition);
+  if (!key || !safeRendition) return null;
+
+  try {
+    const endpointUrl = new URL(endpoint);
+    const localHttp = endpointUrl.protocol === "http:" &&
+      (endpointUrl.hostname === "localhost" || endpointUrl.hostname === "127.0.0.1");
+    if (
+      (endpointUrl.protocol !== "https:" && !localHttp) ||
+      endpointUrl.username ||
+      endpointUrl.password
+    ) return null;
+    return new URL(
+      `/api/public/organization-event-flyers/${key}/${safeRendition}`,
+      endpointUrl.origin,
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function publicEventFlyerRequestInit(
+  rendition: PublicEventFlyerRendition,
+  bypassSecret?: string,
+): RequestInit {
+  return {
+    cache: "no-store",
+    headers: {
+      accept: rendition === "original"
+        ? "application/pdf,image/jpeg,image/png"
+        : "image/webp",
+      ...(bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : {}),
+    },
+    signal: AbortSignal.timeout(8_000),
+  };
+}
+
+export function withPublicEventFlyerProxyUrls(
+  event: PlatoonPublicOrganizationEvent,
+): PlatoonPublicOrganizationEvent {
+  if (!event.flyer) return event;
+  const { key } = event.flyer;
+  const thumbnailUrl = publicEventFlyerProxyPath(key, "thumbnail");
+  const detailUrl = publicEventFlyerProxyPath(key, "detail");
+  const fullUrl = publicEventFlyerProxyPath(key, "full");
+  const originalUrl = publicEventFlyerProxyPath(key, "original");
+  if (!thumbnailUrl || !detailUrl || !fullUrl || !originalUrl) return event;
+
+  return {
+    ...event,
+    flyer: {
+      ...event.flyer,
+      thumbnailUrl,
+      detailUrl,
+      fullUrl,
+      originalUrl,
+    },
   };
 }
