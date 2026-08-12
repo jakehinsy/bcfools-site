@@ -25,6 +25,8 @@ export type EventCategoryOverrides = Record<
   { label?: string; color?: string }
 >;
 
+export const INITIAL_UPCOMING_EVENT_COUNT = 2;
+
 function timestampDateKey(timestamp: string, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
@@ -81,6 +83,13 @@ export function publicEventIsUpcoming(
     return publicEventEndDateKey(event) >= timestampDateKey(now, calendarTimeZone);
   }
   return new Date(event.endsAt ?? event.startsAt).getTime() >= new Date(now).getTime();
+}
+
+export function publicEventsForUpcomingList(
+  events: readonly PublicEvent[],
+  expanded: boolean,
+) {
+  return expanded ? events : events.slice(0, INITIAL_UPCOMING_EVENT_COUNT);
 }
 
 type WebsiteEventOptions = {

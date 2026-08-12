@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  INITIAL_UPCOMING_EVENT_COUNT,
   publicEventEndDateKey,
   publicEventIsUpcoming,
   publicEventStartDateKey,
   publicEventTimeLabel,
+  publicEventsForUpcomingList,
   websiteEventsFromPlatoon,
   type PublicEvent,
 } from "../src/data/events.ts";
@@ -375,4 +377,27 @@ test("uses UTC for timed null-zone events and the tenant zone for all-day events
     ...parsed.events[0],
     allDay: true,
   }], options)[0]?.timeZone, "America/Chicago");
+});
+
+test("shows two upcoming events initially and preserves the full expanded list", () => {
+  const parsed = parsePublicOrganizationEventsPayload({
+    organizationSlug: "brew-city-fools",
+    ...range,
+    events: [publicEvent],
+  }, "brew-city-fools");
+  assert.ok(parsed);
+
+  const baseEvent = websiteEventsFromPlatoon(parsed.events, {
+    categoryOverrides: {},
+    defaultCategoryColor: "#ffffff",
+    defaultTimeZone: "America/Chicago",
+  })[0];
+  const events = Array.from({ length: 4 }, (_, index) => ({
+    ...baseEvent,
+    id: `00000000-0000-4000-8000-00000000000${index}`,
+  }));
+
+  assert.equal(INITIAL_UPCOMING_EVENT_COUNT, 2);
+  assert.deepEqual(publicEventsForUpcomingList(events, false), events.slice(0, 2));
+  assert.equal(publicEventsForUpcomingList(events, true), events);
 });
