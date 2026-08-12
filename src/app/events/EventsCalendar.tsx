@@ -5,10 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import {
+  INITIAL_UPCOMING_EVENT_COUNT,
   publicEventEndDateKey,
   publicEventIsUpcoming,
   publicEventStartDateKey,
   publicEventTimeLabel,
+  publicEventsForUpcomingList,
   type PublicEvent,
   type PublicEventCategory,
 } from "@/data/events";
@@ -126,6 +128,7 @@ export function EventsCalendar({
   );
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
 
   const categories = useMemo(() => {
     const unique = new Map<string, PublicEventCategory>();
@@ -171,7 +174,9 @@ export function EventsCalendar({
     : [];
   const displayedEvents = selectedDate
     ? selectedDateEvents
-    : upcomingEvents.slice(0, 5);
+    : publicEventsForUpcomingList(upcomingEvents, showAllUpcoming);
+  const canToggleUpcoming = !selectedDate &&
+    upcomingEvents.length > INITIAL_UPCOMING_EVENT_COUNT;
   const selectedDateLabel = selectedDate
     ? new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", {
         day: "numeric",
@@ -226,6 +231,7 @@ export function EventsCalendar({
             onClick={() => {
               setActiveCategory("all");
               setSelectedDate(null);
+              setShowAllUpcoming(false);
             }}
             type="button"
           >
@@ -240,6 +246,7 @@ export function EventsCalendar({
               onClick={() => {
                 setActiveCategory(category.key);
                 setSelectedDate(null);
+                setShowAllUpcoming(false);
               }}
               type="button"
             >
@@ -337,6 +344,7 @@ export function EventsCalendar({
                   key={`${key}-${index}`}
                   onClick={() => {
                     setSelectedDate(key);
+                    setShowAllUpcoming(false);
                     if (monthOffset !== 0) {
                       setVisibleMonth(new Date(cellDate.getFullYear(), cellDate.getMonth(), 1));
                     }
@@ -379,7 +387,10 @@ export function EventsCalendar({
             {selectedDate ? (
               <button
                 className={styles.showUpcoming}
-                onClick={() => setSelectedDate(null)}
+                onClick={() => {
+                  setSelectedDate(null);
+                  setShowAllUpcoming(false);
+                }}
                 type="button"
               >
                 Show upcoming
@@ -390,20 +401,34 @@ export function EventsCalendar({
           </div>
 
           {displayedEvents.length > 0 ? (
-            <div className={styles.eventCards}>
-              {displayedEvents.map((event) => {
-                return (
-                  <Link
-                    aria-label={`${event.title}: view event details`}
-                    className={`${styles.eventCard} ${styles.eventCardLinked}`}
-                    href={`/events/${event.id}`}
-                    key={event.id}
-                  >
-                    <EventCardContent event={event} />
-                  </Link>
-                );
-              })}
-            </div>
+            <>
+              <div className={styles.eventCards}>
+                {displayedEvents.map((event) => {
+                  return (
+                    <Link
+                      aria-label={`${event.title}: view event details`}
+                      className={`${styles.eventCard} ${styles.eventCardLinked}`}
+                      href={`/events/${event.id}`}
+                      key={event.id}
+                    >
+                      <EventCardContent event={event} />
+                    </Link>
+                  );
+                })}
+              </div>
+              {canToggleUpcoming && (
+                <button
+                  aria-expanded={showAllUpcoming}
+                  className={styles.upcomingListToggle}
+                  onClick={() => setShowAllUpcoming((current) => !current)}
+                  type="button"
+                >
+                  {showAllUpcoming
+                    ? "Show fewer upcoming events"
+                    : `View all upcoming events (${upcomingEvents.length})`}
+                </button>
+              )}
+            </>
           ) : (
             <div className={styles.emptyState}>
               <span className={styles.emptyStateIcon}><CalendarIcon /></span>
@@ -428,7 +453,15 @@ export function EventsCalendar({
               </p>
               <div className={styles.emptyStateActions}>
                 {selectedDate ? (
-                  <button type="button" onClick={() => setSelectedDate(null)}>Show upcoming</button>
+                  <button
+                    onClick={() => {
+                      setSelectedDate(null);
+                      setShowAllUpcoming(false);
+                    }}
+                    type="button"
+                  >
+                    Show upcoming
+                  </button>
                 ) : feedStatus === "unavailable" ? (
                   <Link href="/events">Try again <ArrowIcon /></Link>
                 ) : (
