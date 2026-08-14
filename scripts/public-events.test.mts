@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  nextPublicEvent,
   publicEventEndDateKey,
   publicEventIsUpcoming,
   publicEventStartDateKey,
@@ -273,6 +274,50 @@ test("formats all-day, legacy, timezone-aware, and multi-day events canonically"
     endsAt: "2026-08-11T16:00:00.000Z",
     allDay: false,
   }), "9:00 AM - Aug 11, 11:00 AM");
+});
+
+test("selects the earliest event that is still in progress or upcoming", () => {
+  const baseEvent: PublicEvent = {
+    id: publicEvent.eventKey,
+    title: publicEvent.title,
+    summary: null,
+    externalUrl: null,
+    startsAt: "2026-08-10T14:00:00.000Z",
+    endsAt: "2026-08-10T16:00:00.000Z",
+    allDay: false,
+    timeZone: "America/Chicago",
+    location: null,
+    category: { key: publicEvent.categoryKey, label: "Training", color: "#2563eb" },
+  };
+  const ongoing = {
+    ...baseEvent,
+    id: "ongoing",
+    startsAt: "2026-08-18T13:00:00.000Z",
+    endsAt: "2026-08-18T15:00:00.000Z",
+  };
+  const later = {
+    ...baseEvent,
+    id: "later",
+    startsAt: "2026-08-20T14:00:00.000Z",
+    endsAt: "2026-08-20T16:00:00.000Z",
+  };
+
+  assert.equal(
+    nextPublicEvent(
+      [later, baseEvent, ongoing],
+      "2026-08-18T14:00:00.000Z",
+      "America/Chicago",
+    )?.id,
+    "ongoing",
+  );
+  assert.equal(
+    nextPublicEvent(
+      [baseEvent],
+      "2026-08-18T14:00:00.000Z",
+      "America/Chicago",
+    ),
+    null,
+  );
 });
 
 test("uses UTC for timed null-zone events and the tenant zone for all-day events", () => {

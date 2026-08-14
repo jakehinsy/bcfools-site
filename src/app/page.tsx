@@ -1,9 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import {
+  nextPublicEvent,
+  publicEventStartDateKey,
+  publicEventTimeLabel,
+  websiteEventsFromPlatoon,
+  type PublicEvent,
+} from "@/data/events";
+import { loadPublicOrganizationEvents } from "@/lib/platoonPublicEvents";
 import { ArrowIcon } from "./ArrowIcon";
 import { PoweredByPlatoon } from "./PoweredByPlatoon";
 import { SiteHeader } from "./SiteHeader";
+
+export const dynamic = "force-dynamic";
 
 const principles = [
   {
@@ -41,7 +51,36 @@ const membershipSteps = [
   },
 ];
 
-export default function Home() {
+function homepageEventDate(event: PublicEvent) {
+  const [year, month, day] = publicEventStartDateKey(event).split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  return {
+    day: String(day),
+    month: new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      timeZone: "UTC",
+    }).format(date),
+  };
+}
+
+export default async function Home() {
+  const now = new Date();
+  const feed = await loadPublicOrganizationEvents(
+    siteConfig.publicEvents.organizationSlug,
+    siteConfig.publicEvents.defaultTimeZone,
+    now,
+  );
+  const events = websiteEventsFromPlatoon(feed.events, siteConfig.publicEvents);
+  const nextEvent = nextPublicEvent(
+    events,
+    now.toISOString(),
+    siteConfig.publicEvents.defaultTimeZone,
+  );
+  const nextEventDate = nextEvent ? homepageEventDate(nextEvent) : null;
+  const nextEventDetails = nextEvent
+    ? [nextEvent.location, publicEventTimeLabel(nextEvent)].filter(Boolean).join(" · ")
+    : null;
+
   return (
     <>
       <a className="skip-link" href="#main-content">
@@ -187,17 +226,40 @@ export default function Home() {
             </div>
             <div className="events__card">
               <div className="events__date" aria-hidden="true">
-                <span>Next</span>
-                <strong>TBA</strong>
+                <span>
+                  {nextEventDate?.month ?? (feed.status === "ready" ? "Next" : "Events")}
+                </span>
+                <strong>{nextEventDate?.day ?? (feed.status === "ready" ? "TBA" : "View")}</strong>
               </div>
               <div className="events__body">
-                <p className="events__status">The next one is coming</p>
-                <h3>We’re lining up the next chance to get together.</h3>
-                <p>
-                  Follow the chapter for new dates. Whether it is a hands-on
-                  class, a chapter gathering, or a good reason to sit around a
-                  table, there is always room for one more.
-                </p>
+                {nextEvent ? (
+                  <>
+                    <p className="events__status">{nextEvent.category.label}</p>
+                    <h3>{nextEvent.title}</h3>
+                    <p>{nextEvent.summary ?? nextEventDetails}</p>
+                    {nextEvent.summary && nextEventDetails && (
+                      <p className="events__meta">{nextEventDetails}</p>
+                    )}
+                  </>
+                ) : feed.status === "ready" ? (
+                  <>
+                    <p className="events__status">The next one is coming</p>
+                    <h3>We’re lining up the next chance to get together.</h3>
+                    <p>
+                      Public training, chapter gatherings, and community events
+                      will appear here as soon as Brew City posts them.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="events__status">Public chapter calendar</p>
+                    <h3>See the latest classes and chapter gatherings.</h3>
+                    <p>
+                      Open the calendar for Brew City&apos;s current public event
+                      listings and updates.
+                    </p>
+                  </>
+                )}
               </div>
               <div className="events__actions">
                 <a
@@ -289,7 +351,7 @@ export default function Home() {
 
           <div className="footer-links">
             <p>Explore</p>
-            {siteConfig.navigation.map((item) => (
+            {siteConfig.footerNavigation.map((item) => (
               <a key={item.href} href={item.href}>
                 {item.label}
               </a>

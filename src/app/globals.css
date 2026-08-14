@@ -728,6 +728,12 @@ img {
   margin: 10px 0 0;
 }
 
+.events__card .events__meta {
+  color: rgb(255 255 255 / 82%);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .events__actions {
   align-items: flex-start;
   display: flex;
@@ -999,7 +1005,8 @@ img {
 
   .training__media {
     aspect-ratio: 4 / 3;
-    min-height: 420px;
+    min-height: 0;
+    width: 100%;
   }
 
   .events__card {
@@ -1068,10 +1075,6 @@ img {
   .hero__actions .button,
   .join__actions .button {
     width: 100%;
-  }
-
-  .training__media {
-    min-height: 350px;
   }
 
   .events__card {

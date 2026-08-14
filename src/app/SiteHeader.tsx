@@ -1,9 +1,18 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useRef } from "react";
 import { siteConfig } from "@/config/site";
 import { ArrowIcon } from "./ArrowIcon";
 
 export function SiteHeader() {
+  const mobileNav = useRef<HTMLDetailsElement>(null);
+
+  function closeMobileNav() {
+    mobileNav.current?.removeAttribute("open");
+  }
+
   return (
     <>
       <div className="utility-bar">
@@ -58,17 +67,18 @@ export function SiteHeader() {
             Join the chapter <ArrowIcon />
           </Link>
 
-          <details className="mobile-nav">
+          <details className="mobile-nav" ref={mobileNav}>
             <summary>Menu</summary>
             <nav aria-label="Mobile navigation">
               {siteConfig.navigation.map((item) => (
-                <Link key={item.href} href={item.href}>
+                <Link key={item.href} href={item.href} onClick={closeMobileNav}>
                   {item.label}
                 </Link>
               ))}
               <Link
                 className="mobile-nav__cta"
                 href={siteConfig.links.applicationRoute}
+                onClick={closeMobileNav}
               >
                 Membership application <ArrowIcon />
               </Link>

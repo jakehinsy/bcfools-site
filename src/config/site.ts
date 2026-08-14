@@ -13,8 +13,13 @@ export const siteConfig = {
     { label: "About", href: "/about" },
     { label: "Training", href: "/#training" },
     { label: "Events", href: "/events" },
-    { label: "Join", href: "/join" },
     { label: "Contact", href: "/contact" },
+  ],
+  footerNavigation: [
+    { label: "About", href: "/about" },
+    { label: "Training", href: "/#training" },
+    { label: "Events", href: "/events" },
+    { label: "Join", href: "/join" },
   ],
   links: {
     applicationRoute: "/join",

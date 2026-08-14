@@ -82,6 +82,16 @@ export function publicEventIsUpcoming(
   return new Date(event.endsAt ?? event.startsAt).getTime() >= new Date(now).getTime();
 }
 
+export function nextPublicEvent(
+  events: readonly PublicEvent[],
+  now: string,
+  calendarTimeZone: string,
+) {
+  return events
+    .filter((event) => publicEventIsUpcoming(event, now, calendarTimeZone))
+    .toSorted((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null;
+}
+
 type WebsiteEventOptions = {
   categoryOverrides: EventCategoryOverrides;
   defaultCategoryColor: string;
