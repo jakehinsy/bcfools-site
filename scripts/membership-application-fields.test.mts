@@ -36,3 +36,11 @@ test("does not include restricted values in payment or success copy", () => {
   const successBlock = form.slice(form.indexOf('submission.status === "success"'));
   assert.doesNotMatch(successBlock, /dateOfBirth|addressLine1|postalCode/);
 });
+
+test("sets the correct submission expectation before approval and payment", () => {
+  const successBlock = form.slice(form.indexOf('submission.status === "success"'));
+  assert.match(successBlock, /application receipt/);
+  assert.match(successBlock, /No action is required right now/);
+  assert.match(successBlock, /separate approval email/);
+  assert.doesNotMatch(successBlock, /Sign in to continue|View application/);
+});

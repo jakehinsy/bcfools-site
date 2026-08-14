@@ -712,7 +712,7 @@ export function MembershipApplicationForm({
         <div className={styles.previewResult} role="status" tabIndex={-1}>
           <strong>Application submitted. No charge was made.</strong>
           <p>
-            Brew City FOOLS will review your application. If approved, Square will charge {formatMoney(amountMinor, currency)} to the {submission.savedCard.brand} ending in {submission.savedCard.lastFour}. After payment succeeds, we will email your receipt and a secure link to finish setting up your Platoon account.
+            We sent a Brew City FOOLS application receipt to your email. No action is required right now. Brew City FOOLS will review your application. If approved, Square will charge {formatMoney(amountMinor, currency)} to the {submission.savedCard.brand} ending in {submission.savedCard.lastFour}. After payment succeeds, we will send a separate approval email with a secure link to set up or sign in to Platoon access.
           </p>
           <p>{submission.renewalMode === "automatic" ? "Auto-renew annually selected." : "Manual renewal selected."} Reference: {submission.applicationReference}</p>
         </div>
@@ -720,7 +720,7 @@ export function MembershipApplicationForm({
 
       {submission.status === "error" ? (
         <div className={styles.errorResult} role="alert">
-          <strong>Application not sent.</strong>
+          <strong>Application could not be confirmed.</strong>
           <p>{submission.message} Nothing was charged.</p>
         </div>
       ) : null}
