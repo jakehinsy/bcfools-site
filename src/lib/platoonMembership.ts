@@ -110,7 +110,10 @@ export function intakeConfiguration() {
 export async function membershipProgramConfiguration(): Promise<MembershipProgramConfig | null> {
   try {
     const intake = intakeConfiguration();
-    const { programHandle } = connectionConfiguration();
+    const programHandle = requiredEnvironment("PLATOON_MEMBERSHIP_PROGRAM_HANDLE");
+    if (!PROGRAM_HANDLE_PATTERN.test(programHandle)) {
+      throw new Error("Platoon membership program handle is invalid.");
+    }
     const endpoint = new URL("/api/public/membership-program-config", intake.endpoint.origin);
     endpoint.searchParams.set("handle", programHandle);
     const response = await fetch(endpoint, {

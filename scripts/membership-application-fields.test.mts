@@ -30,6 +30,15 @@ test("uses the server-owned program schema and requiredness", () => {
   assert.match(form, /APPLICATION_SCHEMA_VERSION/);
 });
 
+test("loads paid program configuration without requiring the deferred account connection flow", () => {
+  const configBlock = membership.slice(
+    membership.indexOf("export async function membershipProgramConfiguration"),
+    membership.indexOf("export function connectionConfiguration"),
+  );
+  assert.match(configBlock, /requiredEnvironment\("PLATOON_MEMBERSHIP_PROGRAM_HANDLE"\)/);
+  assert.doesNotMatch(configBlock, /connectionConfiguration\(\)/);
+});
+
 test("does not include restricted values in payment or success copy", () => {
   const paymentBlock = form.slice(form.indexOf("payment: {"), form.indexOf("const result ="));
   assert.doesNotMatch(paymentBlock, /dateOfBirth|addressLine1|postalCode/);
