@@ -452,6 +452,16 @@
   border-color: rgb(223 38 51 / 34%);
 }
 
+.typeCardLink {
+  grid-template-columns: minmax(0, 1fr) auto;
+  text-decoration: none;
+}
+
+.typeCardLink > b {
+  grid-column: 2;
+  grid-row: 1;
+}
+
 .typeCardSelected {
   background: #fff4f4;
   border-color: var(--red-600);

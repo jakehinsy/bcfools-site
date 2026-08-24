@@ -456,24 +456,13 @@ export function MembershipApplicationForm({
             <b>{formatMoney(paymentConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100, currency)}</b>
           </label>
 
-          <label
-            className={`${styles.typeCard} ${applicationType === "renewal" ? styles.typeCardSelected : ""}`}
-          >
-            <input
-              checked={applicationType === "renewal"}
-              name="applicationType"
-              onChange={() => {
-                setApplicationType("renewal");
-              }}
-              type="radio"
-              value="renewal"
-            />
+          <Link className={`${styles.typeCard} ${styles.typeCardLink}`} href={siteConfig.links.renewal}>
             <span>
               <strong>Annual renewal</strong>
-              <small>Renew your chapter membership</small>
+              <small>Sign in to your Platoon account</small>
             </span>
             <b>{formatMoney(renewalAmountMinor, currency)}</b>
-          </label>
+          </Link>
         </div>
       </fieldset>
 
