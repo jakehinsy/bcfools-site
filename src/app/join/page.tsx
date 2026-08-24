@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { siteConfig } from "@/config/site";
 import {
@@ -13,6 +14,7 @@ import {
 import { PoweredByPlatoon } from "../PoweredByPlatoon";
 import { LegalLinks } from "../LegalLinks";
 import { SiteHeader } from "../SiteHeader";
+import { ArrowIcon } from "../ArrowIcon";
 import { MembershipApplicationForm } from "./MembershipApplicationForm";
 import styles from "./join.module.css";
 
@@ -47,6 +49,13 @@ export default async function JoinPage({
     : null;
   let initialConnection = null;
   const paymentConfig = await membershipProgramConfiguration();
+  const applicationReady = Boolean(
+    paymentConfig?.square.ready &&
+      paymentConfig.square.environment === "production" &&
+      paymentConfig.square.applicationId &&
+      paymentConfig.square.locationId &&
+      paymentConfig.program.savedCardConsentVersion,
+  );
   const membershipCurrency = paymentConfig?.program.currency ?? "USD";
   const formatMembershipPrice = (amountMinor: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: membershipCurrency }).format(amountMinor / 100);
@@ -110,48 +119,104 @@ export default async function JoinPage({
         <section className={styles.applicationSection} id="application">
           <div className={`shell ${styles.applicationGrid}`}>
             <aside className={styles.sidebar}>
-              <p className={styles.eyebrow}>How it works</p>
-              <h2>Simple, secure, and reviewed by the chapter.</h2>
-              <ol>
-                <li>
-                  <span>01</span>
-                  <div>
-                    <strong>Apply and save your card</strong>
-                    <p>Submit your details and securely save a card with Square. Due today: $0.</p>
-                  </div>
-                </li>
-                <li>
-                  <span>02</span>
-                  <div>
-                    <strong>Chapter review</strong>
-                    <p>A designated chapter officer reviews every application. Nothing is charged during review.</p>
-                  </div>
-                </li>
-                <li>
-                  <span>03</span>
-                  <div>
-                    <strong>Approval and activation</strong>
-                    <p>If approved, the saved card is charged and we email your receipt and secure Platoon setup link.</p>
-                  </div>
-                </li>
-              </ol>
+              {applicationReady ? (
+                <>
+                  <p className={styles.eyebrow}>How it works</p>
+                  <h2>Simple, secure, and reviewed by the chapter.</h2>
+                  <ol>
+                    <li>
+                      <span>01</span>
+                      <div>
+                        <strong>Apply and save your card</strong>
+                        <p>Submit your details and securely save a card with Square. Due today: $0.</p>
+                      </div>
+                    </li>
+                    <li>
+                      <span>02</span>
+                      <div>
+                        <strong>Chapter review</strong>
+                        <p>A designated chapter officer reviews every application. Nothing is charged during review.</p>
+                      </div>
+                    </li>
+                    <li>
+                      <span>03</span>
+                      <div>
+                        <strong>Approval and activation</strong>
+                        <p>If approved, the saved card is charged and we email your receipt and secure Platoon setup link.</p>
+                      </div>
+                    </li>
+                  </ol>
+                </>
+              ) : (
+                <>
+                  <p className={styles.eyebrow}>Membership</p>
+                  <h2>There is room at the table.</h2>
+                  <ol>
+                    <li>
+                      <span>01</span>
+                      <div>
+                        <strong>New members</strong>
+                        <p>Introduce yourself, tell us about your fire-service experience, and join the chapter.</p>
+                      </div>
+                    </li>
+                    <li>
+                      <span>02</span>
+                      <div>
+                        <strong>Returning members</strong>
+                        <p>Renew your annual chapter membership and keep your record current.</p>
+                      </div>
+                    </li>
+                    <li>
+                      <span>03</span>
+                      <div>
+                        <strong>Questions</strong>
+                        <p>The membership crew can help with applications, renewals, dues, or record updates.</p>
+                      </div>
+                    </li>
+                  </ol>
+                </>
+              )}
             </aside>
 
             <div className={styles.formPanel}>
-              <div className={styles.formHeading}>
-                <p className={styles.eyebrow}>Chapter application</p>
-                <h2>Let&apos;s get you started.</h2>
-                <p>Required fields are marked by the browser when you continue.</p>
-              </div>
-              <MembershipApplicationForm
-                connectionSupportReference={connectionSupportReference}
-                connectionStatus={connectionStatus}
-                defaultType={defaultType}
-                initialConnection={initialConnection}
-                platoonConnectionOrigin={platoonConnectionOrigin}
-                platoonSignInAvailable={Boolean(platoonConnectionOrigin)}
-                paymentConfig={paymentConfig}
-              />
+              {applicationReady ? (
+                <>
+                  <div className={styles.formHeading}>
+                    <p className={styles.eyebrow}>Chapter application</p>
+                    <h2>Let&apos;s get you started.</h2>
+                    <p>Required fields are marked by the browser when you continue.</p>
+                  </div>
+                  <MembershipApplicationForm
+                    connectionSupportReference={connectionSupportReference}
+                    connectionStatus={connectionStatus}
+                    defaultType={defaultType}
+                    initialConnection={initialConnection}
+                    platoonConnectionOrigin={platoonConnectionOrigin}
+                    platoonSignInAvailable={Boolean(platoonConnectionOrigin)}
+                    paymentConfig={paymentConfig}
+                  />
+                </>
+              ) : (
+                <div className={styles.applicationFallback}>
+                  <p className={styles.eyebrow}>Membership applications</p>
+                  <h2>Choose your membership option.</h2>
+                  <p>
+                    Start a new Brew City membership or renew for another year.
+                    Choose the option that fits to continue online.
+                  </p>
+                  <div className={styles.applicationFallbackActions}>
+                    <a href={siteConfig.links.newMembership}>
+                      New membership <ArrowIcon />
+                    </a>
+                    <a href={siteConfig.links.renewal}>
+                      Annual renewal <ArrowIcon />
+                    </a>
+                  </div>
+                  <p className={styles.applicationFallbackHelp}>
+                    Need help? <Link href={siteConfig.links.contact}>Contact the chapter</Link>.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </section>

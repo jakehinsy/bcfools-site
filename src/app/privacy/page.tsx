@@ -38,17 +38,15 @@ export default function PrivacyPage() {
           <li>review new and renewal membership applications;</li>
           <li>contact applicants about their application or chapter status;</li>
           <li>
-            create or connect a Platoon account after email verification when
-            that account-activation option is available;
+            create or connect a Platoon account after email verification;
           </li>
           <li>maintain chapter membership and dues records;</li>
           <li>send optional text updates when separate consent is provided; and</li>
           <li>secure, troubleshoot, and improve the application process.</li>
         </ul>
         <p>
-          When account activation is available, creating a Platoon account does
-          not by itself approve a Brew City membership application or confirm
-          payment or good standing.
+          Creating or connecting a Platoon account does not by itself approve a
+          Brew City membership application or confirm payment or good standing.
         </p>
       </section>
 

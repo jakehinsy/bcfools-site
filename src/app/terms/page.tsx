@@ -34,9 +34,9 @@ export default function TermsPage() {
         </p>
         <p>
           You are responsible for providing accurate information and keeping
-          account credentials secure. When Platoon account matching is offered,
-          verified email is used for automatic matching; the chapter does not
-          automatically merge accounts by name.
+          account credentials secure. Verified email is used to connect an
+          application with a Platoon account; the chapter does not automatically
+          merge accounts by name.
         </p>
       </section>
 
@@ -62,8 +62,10 @@ export default function TermsPage() {
         <p>
           Membership prices and payment timing are shown during the application
           process. Payments are handled through the identified payment provider.
-          No recurring subscription is created unless a future checkout clearly
-          presents recurring terms and you expressly authorize them.
+          Automatic renewal applies only when that choice is shown and you
+          expressly select it. The authorization continues until you turn it off
+          in Platoon. Choosing manual renewal does not authorize automatic annual
+          charges.
         </p>
       </section>
 

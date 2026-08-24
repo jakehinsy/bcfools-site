@@ -373,58 +373,58 @@ export function MembershipApplicationForm({
       {paymentConfig?.square.ready ? (
         <Script id="square-web-payments" onReady={() => void initializeSquare()} src={squareScript} strategy="afterInteractive" />
       ) : null}
-      <section className={styles.platoonConnection} aria-labelledby="platoon-connection-title">
-        {initialConnection ? (
-          <div className={styles.connectionConfirmed}>
-            <span aria-hidden="true">&#10003;</span>
-            <div>
-              <strong id="platoon-connection-title">Platoon account connected</strong>
-              <p>
-                Signed in as {initialConnection.verifiedEmail}. We&apos;ll use this verified
-                email and prefill available profile details for you to review.
-              </p>
+      {initialConnection || platoonSignInAvailable || connectionStatus ? (
+        <section className={styles.platoonConnection} aria-labelledby="platoon-connection-title">
+          {initialConnection ? (
+            <div className={styles.connectionConfirmed}>
+              <span aria-hidden="true">&#10003;</span>
+              <div>
+                <strong id="platoon-connection-title">Platoon account connected</strong>
+                <p>
+                  Signed in as {initialConnection.verifiedEmail}. We&apos;ll use this verified
+                  email and prefill available profile details for you to review.
+                </p>
+              </div>
+              <a href="/api/platoon/connect/clear">Use another account</a>
             </div>
-            <a href="/api/platoon/connect/clear">Use another account</a>
-          </div>
-        ) : (
-          <div className={styles.connectionPrompt}>
-            <div>
-              <strong id="platoon-connection-title">Already use Platoon?</strong>
-              <p>Sign in to verify your email and prefill available profile details.</p>
+          ) : (
+            <div className={styles.connectionPrompt}>
+              <div>
+                <strong id="platoon-connection-title">Already use Platoon?</strong>
+                <p>Sign in to verify your email and prefill available profile details.</p>
+              </div>
+              {platoonSignInAvailable ? (
+                <button
+                  aria-disabled={connectionStarting}
+                  disabled={connectionStarting}
+                  onClick={handlePlatoonSignIn}
+                  type="button"
+                >
+                  {connectionStarting ? "Opening Platoon…" : "Sign in with Platoon"}
+                </button>
+              ) : null}
             </div>
-            {platoonSignInAvailable ? (
-              <button
-                aria-disabled={connectionStarting}
-                disabled={connectionStarting}
-                onClick={handlePlatoonSignIn}
-                type="button"
-              >
-                {connectionStarting ? "Opening Platoon…" : "Sign in with Platoon"}
-              </button>
-            ) : (
-              <span>Sign-in connection pending</span>
-            )}
-          </div>
-        )}
-        {!initialConnection && connectionStatus === "error" ? (
-          <p className={styles.connectionError} role="alert">
-            We couldn&apos;t connect that Platoon account. Please wait before trying
-            again or continue with the application.
-            {connectionSupportReference ? (
-              <> Support reference: <strong>{connectionSupportReference}</strong>.</>
-            ) : null}
-          </p>
-        ) : null}
-        {!initialConnection && connectionStatus === "unavailable" ? (
-          <p className={styles.connectionError} role="status">
-            Platoon sign-in is temporarily unavailable. You can still complete the application.
-          </p>
-        ) : null}
-      </section>
+          )}
+          {!initialConnection && connectionStatus === "error" ? (
+            <p className={styles.connectionError} role="alert">
+              We couldn&apos;t connect that Platoon account. Please wait before trying
+              again or continue with the application.
+              {connectionSupportReference ? (
+                <> Support reference: <strong>{connectionSupportReference}</strong>.</>
+              ) : null}
+            </p>
+          ) : null}
+          {!initialConnection && connectionStatus === "unavailable" ? (
+            <p className={styles.connectionError} role="status">
+              Platoon sign-in is temporarily unavailable. You can still complete the application.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <form className={styles.form} onChange={resetAttempt} onSubmit={handleSubmit}>
-      <div className={styles.previewNotice} role="note">
-        <strong>Secure deferred-charge pilot</strong>
+      <div className={styles.paymentNotice} role="note">
+        <strong>How payment works</strong>
         <p>
           Your application is reviewed before any charge. Square securely saves
           the payment method; Brew City FOOLS and Platoon never receive the full card number.
@@ -636,8 +636,8 @@ export function MembershipApplicationForm({
         </p>
         {squareState === "error" ? (
           <div className={styles.paymentUnavailable} role="alert">
-            <strong>Secure payment form unavailable</strong>
-            <p>We could not load Square&apos;s secure payment form. Your application has not been submitted and nothing was charged.</p>
+            <strong>Online application temporarily unavailable</strong>
+            <p>We could not load the secure payment form. Refresh the page or contact Brew City membership for help. Your application has not been submitted and nothing was charged.</p>
           </div>
         ) : (
           <div className={styles.squareField}>
@@ -653,10 +653,12 @@ export function MembershipApplicationForm({
           </span>
         </label>
         <div className={styles.renewalChoices} role="radiogroup" aria-label="Membership renewal choice">
+          {paymentConfig?.square.annualRenewalReady ? (
           <label>
-            <input disabled={!paymentConfig?.square.annualRenewalReady} name="renewalMode" required type="radio" value="automatic" />
-            <span><strong>Auto-renew annually</strong>{paymentConfig?.square.annualRenewalReady ? <b>Recommended</b> : null}<small>{paymentConfig?.square.annualRenewalReady ? "After the first paid year, charge the saved card annually at the renewal price shown before each renewal. This authorization continues until you turn it off in Platoon. Brew City uses the successful approval-payment anniversary and a 30-day failed-payment grace period." : "Automatic renewal is not available yet. Choose manual renewal to continue."}</small></span>
+            <input name="renewalMode" required type="radio" value="automatic" />
+            <span><strong>Auto-renew annually</strong><b>Recommended</b><small>After the first paid year, charge the saved card annually at the renewal price shown before each renewal. This authorization continues until you turn it off in Platoon. Brew City uses the successful approval-payment anniversary and a 30-day failed-payment grace period.</small></span>
           </label>
+          ) : null}
           <label>
             <input name="renewalMode" required type="radio" value="manual" />
             <span><strong>Renew manually</strong><small>Do not charge the card automatically. Platoon will remind you before the membership expires.</small></span>
@@ -691,9 +693,9 @@ export function MembershipApplicationForm({
         <dl>
           <div><dt>Due today</dt><dd>{formatMoney(0, currency)}</dd></div>
           <div><dt>Charged only if approved</dt><dd>{formatMoney(amountMinor, currency)}</dd></div>
-          <div><dt>Future annual renewal</dt><dd>{formatMoney(renewalAmountMinor, currency)}</dd></div>
+          <div><dt>Annual renewal</dt><dd>{formatMoney(renewalAmountMinor, currency)}</dd></div>
         </dl>
-        <small>Your required renewal choice controls whether the future renewal is automatic or manual.</small>
+        <small>{paymentConfig?.square.annualRenewalReady ? "Your required renewal choice controls whether the annual renewal is automatic or manual." : "Annual renewals are completed manually."}</small>
       </div>
 
       <button
@@ -709,7 +711,7 @@ export function MembershipApplicationForm({
       </button>
 
       {submission.status === "success" ? (
-        <div className={styles.previewResult} role="status" tabIndex={-1}>
+        <div className={styles.submissionResult} role="status" tabIndex={-1}>
           <strong>Application submitted. No charge was made.</strong>
           <p>
             Brew City FOOLS will review your application. If approved, Square will charge {formatMoney(amountMinor, currency)} to the {submission.savedCard.brand} ending in {submission.savedCard.lastFour}. After payment succeeds, we will email your receipt and a secure link to finish setting up your Platoon account.

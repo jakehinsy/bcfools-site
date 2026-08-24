@@ -94,8 +94,7 @@ export default async function EventsPage() {
               </div>
               <p>
                 Browse Brew City&apos;s public calendar by month or event type. New
-                public events appear here after the chapter publishes them
-                through Platoon.
+                events appear here as the chapter announces them.
               </p>
             </div>
             <EventsCalendar

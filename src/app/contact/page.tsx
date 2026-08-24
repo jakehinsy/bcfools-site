@@ -176,7 +176,6 @@ export default function ContactPage() {
                           src="/images/brew-city-fools-logo.png"
                           width={116}
                         />
-                        <span>Photo coming soon</span>
                       </div>
                     )}
                     <span className={styles.leaderNumber}>
