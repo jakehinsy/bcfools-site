@@ -23,7 +23,7 @@ export const siteConfig = {
   ],
   links: {
     applicationRoute: "/join",
-    renewal: "https://brewcityfools.com/shop/membership-renewal/",
+    renewal: "https://app.platoonapp.com/account/membership/renew?organization=brew-city-fools",
     newMembership: "https://brewcityfools.com/shop/new-membership/",
     contact: "/contact",
     international: "https://www.foolsinternational.com/about-us",

@@ -310,7 +310,7 @@ export default async function Home() {
               </a>
               <a
                 className="button button--outline"
-                href={`${siteConfig.links.applicationRoute}?type=renewal#application`}
+                href={siteConfig.links.renewal}
               >
                 Renew membership
               </a>

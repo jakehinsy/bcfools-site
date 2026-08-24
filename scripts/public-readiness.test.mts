@@ -54,6 +54,21 @@ test("membership application requires complete production payment configuration"
   assert.match(joinPage, /program\.savedCardConsentVersion/);
 });
 
+test("renewals leave the public application and require a Platoon member account", async () => {
+  const [config, home, joinPage, form] = await Promise.all([
+    readFile(new URL("../src/config/site.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/join/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/join/MembershipApplicationForm.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(config, /app\.platoonapp\.com\/account\/membership\/renew\?organization=brew-city-fools/);
+  assert.match(home, /href=\{siteConfig\.links\.renewal\}/);
+  assert.match(joinPage, /params\.type === "renewal"\) redirect\(siteConfig\.links\.renewal\)/);
+  assert.doesNotMatch(form, /value="renewal"/);
+  assert.match(form, /Sign in to your Platoon account/);
+});
+
 test("unused framework starter assets are absent", async () => {
   for (const asset of ["file.svg", "globe.svg", "next.svg", "vercel.svg", "window.svg"]) {
     await assert.rejects(access(new URL(`../public/${asset}`, import.meta.url)));

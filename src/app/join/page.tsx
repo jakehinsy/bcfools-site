@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { siteConfig } from "@/config/site";
 import {
@@ -34,7 +35,8 @@ export default async function JoinPage({
   }>;
 }) {
   const params = await searchParams;
-  const defaultType = params.type === "renewal" ? "renewal" : "new";
+  if (params.type === "renewal") redirect(siteConfig.links.renewal);
+  const defaultType = "new" as const;
   const connectionStatus =
     params.platoon === "connected" ||
     params.platoon === "error" ||
