@@ -10,6 +10,7 @@ import {
 } from "@/data/events";
 import { loadPublicOrganizationEvents } from "@/lib/platoonPublicEvents";
 import { ArrowIcon } from "./ArrowIcon";
+import { CalendarIcon } from "./CalendarIcon";
 import { PoweredByPlatoon } from "./PoweredByPlatoon";
 import { SiteHeader } from "./SiteHeader";
 
@@ -225,11 +226,24 @@ export default async function Home() {
               <h2>Come train. Stay awhile.</h2>
             </div>
             <div className="events__card">
-              <div className="events__date" aria-hidden="true">
+              <div
+                className={`events__date ${
+                  !nextEventDate && feed.status === "unavailable"
+                    ? "events__date--calendar"
+                    : ""
+                }`}
+                aria-hidden="true"
+              >
                 <span>
-                  {nextEventDate?.month ?? (feed.status === "ready" ? "Next" : "Events")}
+                  {nextEventDate?.month ?? (feed.status === "ready" ? "Next" : "Calendar")}
                 </span>
-                <strong>{nextEventDate?.day ?? (feed.status === "ready" ? "TBA" : "View")}</strong>
+                {nextEventDate ? (
+                  <strong>{nextEventDate.day}</strong>
+                ) : feed.status === "ready" ? (
+                  <strong>TBA</strong>
+                ) : (
+                  <CalendarIcon />
+                )}
               </div>
               <div className="events__body">
                 {nextEvent ? (

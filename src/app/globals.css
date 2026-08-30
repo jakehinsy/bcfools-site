@@ -711,6 +711,17 @@ img {
   margin-top: 5px;
 }
 
+.events__date--calendar svg {
+  fill: none;
+  height: 34px;
+  margin-top: 9px;
+  stroke: var(--white);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  width: 34px;
+}
+
 .events__status {
   margin: 0 0 8px;
 }

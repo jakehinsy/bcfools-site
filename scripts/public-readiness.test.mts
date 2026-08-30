@@ -42,6 +42,16 @@ test("public launch metadata and branded not-found page exist", async () => {
   }
 });
 
+test("homepage event fallback uses a calendar symbol instead of a date-like action label", async () => {
+  const homePage = await readFile(
+    new URL("../src/app/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(homePage, /<CalendarIcon \/>/);
+  assert.doesNotMatch(homePage, /feed\.status === "ready" \? "TBA" : "View"/);
+});
+
 test("membership application requires complete production payment configuration", async () => {
   const joinPage = await readFile(
     new URL("../src/app/join/page.tsx", import.meta.url),
