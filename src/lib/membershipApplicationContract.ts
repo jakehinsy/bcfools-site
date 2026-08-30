@@ -1,0 +1,1 @@
+export const APPLICATION_SCHEMA_VERSION = "2026-08-05";

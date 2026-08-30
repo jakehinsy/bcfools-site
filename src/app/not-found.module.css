@@ -1,0 +1,116 @@
+.page {
+  background: var(--navy-950);
+  color: var(--white);
+  min-height: calc(100svh - 114px);
+  overflow: hidden;
+  position: relative;
+}
+
+.image {
+  object-fit: cover;
+  object-position: center;
+}
+
+.overlay {
+  background:
+    linear-gradient(90deg, rgb(9 11 34 / 97%) 0%, rgb(9 11 34 / 82%) 54%, rgb(9 11 34 / 32%) 100%),
+    linear-gradient(0deg, rgb(9 11 34 / 64%) 0%, transparent 62%);
+  inset: 0;
+  position: absolute;
+}
+
+.page::before {
+  background: var(--red-600);
+  content: "";
+  height: 7px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: min(30vw, 390px);
+  z-index: 2;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - 114px);
+  padding-block: 72px;
+  position: relative;
+  z-index: 2;
+}
+
+.content > p:first-child {
+  color: #ff6972;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  margin: 0 0 18px;
+  text-transform: uppercase;
+}
+
+.content h1 {
+  font-family: var(--font-oswald), Impact, sans-serif;
+  font-size: clamp(3.8rem, 8vw, 7.2rem);
+  letter-spacing: 0;
+  line-height: 0.95;
+  margin: 0;
+  max-width: 830px;
+  text-transform: uppercase;
+}
+
+.intro {
+  border-top: 1px solid rgb(255 255 255 / 24%);
+  color: rgb(255 255 255 / 76%);
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 30px 0 0;
+  max-width: 650px;
+  padding-top: 22px;
+}
+
+.actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-top: 34px;
+}
+
+.actions a {
+  color: var(--white);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.actions a:first-child {
+  align-items: center;
+  background: var(--red-600);
+  display: inline-flex;
+  gap: 12px;
+  min-height: 52px;
+  padding: 14px 22px;
+}
+
+.actions svg {
+  height: 15px;
+  width: 15px;
+}
+
+.actions a:focus-visible {
+  outline: 3px solid #f0b323;
+  outline-offset: 4px;
+}
+
+@media (max-width: 620px) {
+  .page,
+  .content {
+    min-height: calc(100svh - 108px);
+  }
+
+  .content h1 {
+    font-size: clamp(3.4rem, 16vw, 5.2rem);
+  }
+}

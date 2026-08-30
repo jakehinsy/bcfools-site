@@ -1,5 +1,20 @@
 import Image from "next/image";
+import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import {
+  nextPublicEvent,
+  publicEventStartDateKey,
+  publicEventTimeLabel,
+  websiteEventsFromPlatoon,
+  type PublicEvent,
+} from "@/data/events";
+import { loadPublicOrganizationEvents } from "@/lib/platoonPublicEvents";
+import { ArrowIcon } from "./ArrowIcon";
+import { CalendarIcon } from "./CalendarIcon";
+import { PoweredByPlatoon } from "./PoweredByPlatoon";
+import { SiteHeader } from "./SiteHeader";
+
+export const dynamic = "force-dynamic";
 
 const principles = [
   {
@@ -37,79 +52,43 @@ const membershipSteps = [
   },
 ];
 
-function Arrow() {
-  return <span aria-hidden="true">↗</span>;
+function homepageEventDate(event: PublicEvent) {
+  const [year, month, day] = publicEventStartDateKey(event).split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  return {
+    day: String(day),
+    month: new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      timeZone: "UTC",
+    }).format(date),
+  };
 }
 
-export default function Home() {
+export default async function Home() {
+  const now = new Date();
+  const feed = await loadPublicOrganizationEvents(
+    siteConfig.publicEvents.organizationSlug,
+    siteConfig.publicEvents.defaultTimeZone,
+    now,
+  );
+  const events = websiteEventsFromPlatoon(feed.events, siteConfig.publicEvents);
+  const nextEvent = nextPublicEvent(
+    events,
+    now.toISOString(),
+    siteConfig.publicEvents.defaultTimeZone,
+  );
+  const nextEventDate = nextEvent ? homepageEventDate(nextEvent) : null;
+  const nextEventDetails = nextEvent
+    ? [nextEvent.location, publicEventTimeLabel(nextEvent)].filter(Boolean).join(" · ")
+    : null;
+
   return (
     <>
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
 
-      <div className="utility-bar">
-        <div className="shell utility-bar__inner">
-          <span>{siteConfig.region}</span>
-          <span aria-hidden="true">•</span>
-          <span>Established {siteConfig.established}</span>
-        </div>
-      </div>
-
-      <header className="site-header">
-        <div className="shell site-header__inner">
-          <a className="brand" href="#top" aria-label="Brew City FOOLS home">
-            <Image
-              className="brand__mark"
-              src="/images/brew-city-fools-logo.png"
-              alt=""
-              width={72}
-              height={70}
-              priority
-            />
-            <span className="brand__copy">
-              <strong>{siteConfig.shortName}</strong>
-              <small>{siteConfig.motto}</small>
-            </span>
-          </a>
-
-          <nav className="desktop-nav" aria-label="Primary navigation">
-            {siteConfig.navigation.map((item) => (
-              <a key={item.href} href={item.href}>
-                {item.label}
-              </a>
-            ))}
-          </nav>
-
-          <a
-            className="button button--header"
-            href={siteConfig.links.application}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Join the chapter <Arrow />
-          </a>
-
-          <details className="mobile-nav">
-            <summary>Menu</summary>
-            <nav aria-label="Mobile navigation">
-              {siteConfig.navigation.map((item) => (
-                <a key={item.href} href={item.href}>
-                  {item.label}
-                </a>
-              ))}
-              <a
-                className="mobile-nav__cta"
-                href={siteConfig.links.application}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Membership application <Arrow />
-              </a>
-            </nav>
-          </details>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main id="main-content">
         <section className="hero" id="top">
@@ -138,7 +117,7 @@ export default function Home() {
               </p>
               <div className="hero__actions">
                 <a className="button button--primary" href="#training">
-                  Train with us <Arrow />
+                  Train with us <ArrowIcon />
                 </a>
                 <a className="button button--ghost" href="#join">
                   Pull up a chair
@@ -181,6 +160,9 @@ export default function Home() {
                   neighbors, and make sure what was handed to us stays alive for
                   the next generation.
                 </p>
+                <Link className="text-link" href="/about">
+                  Read our story <ArrowIcon />
+                </Link>
               </div>
             </div>
 
@@ -225,14 +207,12 @@ export default function Home() {
                 <li>Instructors who teach from experience, not a script</li>
                 <li>Room for every rank to learn, teach, and ask questions</li>
               </ul>
-              <a
+              <Link
                 className="text-link"
                 href={siteConfig.links.contact}
-                target="_blank"
-                rel="noreferrer"
               >
-                Bring training to your department <Arrow />
-              </a>
+                Bring training to your department <ArrowIcon />
+              </Link>
             </div>
           </div>
         </section>
@@ -246,36 +226,68 @@ export default function Home() {
               <h2>Come train. Stay awhile.</h2>
             </div>
             <div className="events__card">
-              <div className="events__date" aria-hidden="true">
-                <span>Next</span>
-                <strong>TBA</strong>
+              <div
+                className={`events__date ${
+                  !nextEventDate && feed.status === "unavailable"
+                    ? "events__date--calendar"
+                    : ""
+                }`}
+                aria-hidden="true"
+              >
+                <span>
+                  {nextEventDate?.month ?? (feed.status === "ready" ? "Next" : "Calendar")}
+                </span>
+                {nextEventDate ? (
+                  <strong>{nextEventDate.day}</strong>
+                ) : feed.status === "ready" ? (
+                  <strong>TBA</strong>
+                ) : (
+                  <CalendarIcon />
+                )}
               </div>
               <div className="events__body">
-                <p className="events__status">The next one is coming</p>
-                <h3>We’re lining up the next chance to get together.</h3>
-                <p>
-                  Follow the chapter for new dates. Whether it is a hands-on
-                  class, a chapter gathering, or a good reason to sit around a
-                  table, there is always room for one more.
-                </p>
+                {nextEvent ? (
+                  <>
+                    <p className="events__status">{nextEvent.category.label}</p>
+                    <h3>{nextEvent.title}</h3>
+                    <p>{nextEvent.summary ?? nextEventDetails}</p>
+                    {nextEvent.summary && nextEventDetails && (
+                      <p className="events__meta">{nextEventDetails}</p>
+                    )}
+                  </>
+                ) : feed.status === "ready" ? (
+                  <>
+                    <p className="events__status">The next one is coming</p>
+                    <h3>We’re lining up the next chance to get together.</h3>
+                    <p>
+                      Public training, chapter gatherings, and community events
+                      will appear here as soon as Brew City posts them.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="events__status">Public chapter calendar</p>
+                    <h3>See the latest classes and chapter gatherings.</h3>
+                    <p>
+                      Open the calendar for Brew City&apos;s current public event
+                      listings and updates.
+                    </p>
+                  </>
+                )}
               </div>
               <div className="events__actions">
-                <a
+                <Link
                   className="button button--light"
-                  href={siteConfig.links.instagram}
-                  target="_blank"
-                  rel="noreferrer"
+                  href="/events"
                 >
-                  See what’s coming <Arrow />
-                </a>
-                <a
+                  Open the calendar <ArrowIcon />
+                </Link>
+                <Link
                   className="text-link text-link--light"
                   href={siteConfig.links.contact}
-                  target="_blank"
-                  rel="noreferrer"
                 >
                   Bring a class our way
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -306,17 +318,13 @@ export default function Home() {
             <div className="join__actions">
               <a
                 className="button button--primary"
-                href={siteConfig.links.application}
-                target="_blank"
-                rel="noreferrer"
+                href={`${siteConfig.links.applicationRoute}?type=new#application`}
               >
-                Join Brew City <Arrow />
+                Join Brew City <ArrowIcon />
               </a>
               <a
                 className="button button--outline"
                 href={siteConfig.links.renewal}
-                target="_blank"
-                rel="noreferrer"
               >
                 Renew membership
               </a>
@@ -330,14 +338,12 @@ export default function Home() {
               <p className="eyebrow eyebrow--light">Say hello</p>
               <h2>Want to train, host a class, or meet the crew?</h2>
             </div>
-            <a
+            <Link
               className="button button--light"
               href={siteConfig.links.contact}
-              target="_blank"
-              rel="noreferrer"
             >
-              Talk to Brew City <Arrow />
-            </a>
+              Talk to Brew City <ArrowIcon />
+            </Link>
           </div>
         </section>
       </main>
@@ -359,7 +365,7 @@ export default function Home() {
 
           <div className="footer-links">
             <p>Explore</p>
-            {siteConfig.navigation.map((item) => (
+            {siteConfig.footerNavigation.map((item) => (
               <a key={item.href} href={item.href}>
                 {item.label}
               </a>
@@ -382,13 +388,11 @@ export default function Home() {
             >
               Instagram
             </a>
-            <a
-              href={siteConfig.links.contact}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <Link href={siteConfig.links.contact}>
               Contact
-            </a>
+            </Link>
+            <Link href={siteConfig.links.privacy}>Privacy</Link>
+            <Link href={siteConfig.links.terms}>Terms</Link>
           </div>
         </div>
 
@@ -396,6 +400,7 @@ export default function Home() {
           <span>
             © {new Date().getFullYear()} {siteConfig.name}
           </span>
+          <PoweredByPlatoon inline />
           <span>{siteConfig.region}</span>
         </div>
       </footer>
