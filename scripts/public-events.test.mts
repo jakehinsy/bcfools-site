@@ -371,6 +371,7 @@ test("selects the earliest event that is still in progress or upcoming", () => {
     timeZone: "America/Chicago",
     location: null,
     category: { key: publicEvent.categoryKey, label: "Training", color: "#2563eb" },
+    flyer: null,
   };
   const ongoing = {
     ...baseEvent,
