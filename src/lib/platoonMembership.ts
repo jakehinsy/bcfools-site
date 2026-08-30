@@ -41,7 +41,7 @@ export type MembershipProgramConfig = {
     recurringConsentVersion: string | null;
     membershipSupportEmail: string | null;
   };
-  square: {
+  square?: {
     ready: boolean;
     environment?: "sandbox" | "production";
     applicationId?: string;
@@ -73,10 +73,21 @@ function requiredEnvironment(name: string): string {
   return value;
 }
 
-function httpsEndpoint(value: string, expectedPath: string): URL {
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+}
+
+function secureEndpointProtocol(endpoint: URL): boolean {
+  const localHttp = process.env.NODE_ENV !== "production" &&
+    endpoint.protocol === "http:" &&
+    isLoopbackHostname(endpoint.hostname);
+  return endpoint.protocol === "https:" || localHttp;
+}
+
+function platoonEndpoint(value: string, expectedPath: string): URL {
   const endpoint = new URL(value);
   if (
-    endpoint.protocol !== "https:" ||
+    !secureEndpointProtocol(endpoint) ||
     endpoint.username ||
     endpoint.password ||
     endpoint.search ||
@@ -99,7 +110,7 @@ export function programCredentials() {
 
 export function intakeConfiguration() {
   const { programKeyId, secret } = programCredentials();
-  const endpoint = httpsEndpoint(
+  const endpoint = platoonEndpoint(
     requiredEnvironment("PLATOON_MEMBERSHIP_INTAKE_URL"),
     APPLICATION_SIGNATURE_PATH,
   );
@@ -124,7 +135,7 @@ export async function membershipProgramConfiguration(): Promise<MembershipProgra
     if (!response.ok) return null;
     const result = await response.json() as MembershipProgramConfig;
     if (
-      !result?.program || !result?.square ||
+      !result?.program ||
       !Number.isInteger(result.program.newFeeMinor) ||
       !Number.isInteger(result.program.renewalFeeMinor) ||
       result.program.formSchemaVersion !== APPLICATION_SCHEMA_VERSION ||
@@ -147,15 +158,15 @@ export function connectionConfiguration() {
     throw new Error("Platoon membership program handle is invalid.");
   }
 
-  const authorizeUrl = httpsEndpoint(
+  const authorizeUrl = platoonEndpoint(
     requiredEnvironment("PLATOON_MEMBERSHIP_CONNECTION_AUTHORIZE_URL"),
     "/membership-connect/authorize",
   );
-  const exchangeUrl = httpsEndpoint(
+  const exchangeUrl = platoonEndpoint(
     requiredEnvironment("PLATOON_MEMBERSHIP_CONNECTION_EXCHANGE_URL"),
     CONNECTION_EXCHANGE_PATH,
   );
-  const returnUrl = httpsEndpoint(
+  const returnUrl = platoonEndpoint(
     requiredEnvironment("PLATOON_MEMBERSHIP_RETURN_URL"),
     "/api/platoon/connect/callback",
   );
@@ -170,6 +181,24 @@ export function connectionConfiguration() {
     returnUrl,
     secret,
   };
+}
+
+export function membershipManagementUrl(fallback: string): string {
+  const configuredOrigin = process.env.PLATOON_MEMBER_WEB_ORIGIN?.trim();
+  if (!configuredOrigin) return fallback;
+
+  const origin = new URL(configuredOrigin);
+  if (
+    !secureEndpointProtocol(origin) ||
+    origin.username ||
+    origin.password ||
+    origin.pathname !== "/" ||
+    origin.search ||
+    origin.hash
+  ) {
+    throw new Error("Platoon member web origin is invalid.");
+  }
+  return new URL("/account/membership", origin).toString();
 }
 
 export function signedProgramHeaders({

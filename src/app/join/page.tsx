@@ -8,6 +8,7 @@ import {
   CONNECTION_COOKIE,
   connectionConfiguration,
   connectionSummary,
+  membershipManagementUrl,
   membershipProgramConfiguration,
   programCredentials,
   readConnection,
@@ -35,8 +36,8 @@ export default async function JoinPage({
   }>;
 }) {
   const params = await searchParams;
-  if (params.type === "renewal") redirect(siteConfig.links.renewal);
-  const defaultType = "new" as const;
+  const renewalUrl = membershipManagementUrl(siteConfig.links.renewal);
+  if (params.type === "renewal") redirect(renewalUrl);
   const connectionStatus =
     params.platoon === "connected" ||
     params.platoon === "error" ||
@@ -50,15 +51,11 @@ export default async function JoinPage({
     ? rawConnectionSupportReference
     : null;
   let initialConnection = null;
-  const paymentConfig = await membershipProgramConfiguration();
+  const programConfig = await membershipProgramConfiguration();
   const applicationReady = Boolean(
-    paymentConfig?.square.ready &&
-      paymentConfig.square.environment === "production" &&
-      paymentConfig.square.applicationId &&
-      paymentConfig.square.locationId &&
-      paymentConfig.program.savedCardConsentVersion,
+    programConfig?.program.enabledApplicationTypes.includes("new"),
   );
-  const membershipCurrency = paymentConfig?.program.currency ?? "USD";
+  const membershipCurrency = programConfig?.program.currency ?? "USD";
   const formatMembershipPrice = (amountMinor: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: membershipCurrency }).format(amountMinor / 100);
   let platoonConnectionOrigin: string | null = null;
@@ -108,10 +105,10 @@ export default async function JoinPage({
               </p>
               <div className={styles.heroPrices} aria-label="Membership prices">
                 <span>
-                  New member <strong>{formatMembershipPrice(paymentConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100)}</strong>
+                  New member <strong>{formatMembershipPrice(programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100)}</strong>
                 </span>
                 <span>
-                  Annual renewal <strong>{formatMembershipPrice(paymentConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100)}</strong>
+                  Annual renewal <strong>{formatMembershipPrice(programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100)}</strong>
                 </span>
               </div>
             </div>
@@ -129,22 +126,22 @@ export default async function JoinPage({
                     <li>
                       <span>01</span>
                       <div>
-                        <strong>Apply and save your card</strong>
-                        <p>Submit your details and securely save a card with Square. Due today: $0.</p>
+                        <strong>Apply online</strong>
+                        <p>Submit your details online. No payment is collected with the application.</p>
                       </div>
                     </li>
                     <li>
                       <span>02</span>
                       <div>
                         <strong>Chapter review</strong>
-                        <p>A designated chapter officer reviews every application. Nothing is charged during review.</p>
+                        <p>The Membership Trustee and President review every new application.</p>
                       </div>
                     </li>
                     <li>
                       <span>03</span>
                       <div>
-                        <strong>Approval and activation</strong>
-                        <p>If approved, the saved card is charged and we email your receipt and secure Platoon setup link.</p>
+                        <strong>Continue by email</strong>
+                        <p>If approved, follow the secure email instructions to claim or sign in to your Platoon web account and pay dues under Membership.</p>
                       </div>
                     </li>
                   </ol>
@@ -191,11 +188,11 @@ export default async function JoinPage({
                   <MembershipApplicationForm
                     connectionSupportReference={connectionSupportReference}
                     connectionStatus={connectionStatus}
-                    defaultType={defaultType}
                     initialConnection={initialConnection}
                     platoonConnectionOrigin={platoonConnectionOrigin}
                     platoonSignInAvailable={Boolean(platoonConnectionOrigin)}
-                    paymentConfig={paymentConfig}
+                    programConfig={programConfig}
+                    renewalUrl={renewalUrl}
                   />
                 </>
               ) : (
@@ -210,7 +207,7 @@ export default async function JoinPage({
                     <a href={siteConfig.links.newMembership}>
                       New membership <ArrowIcon />
                     </a>
-                    <a href={siteConfig.links.renewal}>
+                    <a href={renewalUrl}>
                       Annual renewal <ArrowIcon />
                     </a>
                   </div>

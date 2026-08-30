@@ -15,11 +15,14 @@ The first design pass establishes the homepage, responsive navigation, chapter
 brand system, training imagery, membership flow, social metadata, and useful
 empty state for events.
 
-The `/join` route contains the native membership-form preview for new members
-and annual renewals. Its same-origin server route can submit signed applications
-to Platoon's tenant-safe staging intake while keeping the program credential out
-of the browser. Square remains a separate later step. The existing Jotform stays
-linked as the live fallback during staging validation.
+The `/join` route contains the native application for new members and links
+renewing members to Platoon's authenticated Account > Membership flow. Its
+same-origin server route submits signed applications to Platoon's tenant-safe
+intake while keeping the program credential out of the browser. The public form
+does not collect payment. Approved applicants receive secure web-account
+instructions by email and pay dues from Platoon after approval. The existing
+WordPress/Jotform/WooCommerce flow remains unchanged on the live domain, but the
+replacement-site preview does not link applicants or renewing members back to it.
 
 The staging payload includes a separate, optional SMS-consent choice and a
 server-validated disclosure version. The control is intentionally unchecked by
@@ -36,8 +39,8 @@ department name/state, rank, and active/retired fire-service status attached to
 a current approved department relationship. Unknown or unavailable values stay
 empty, and all prefilled application fields remain editable. The browser never
 receives the verifier, receipt, program secret, or internal Platoon identifiers.
-Applicants who do not connect an account receive Platoon's secure activation
-or sign-in email after intake; no password is collected by the public website.
+After chapter approval, applicants receive Platoon's secure activation or
+sign-in email; no password is collected by the public website.
 
 The server route requires these Vercel Preview environment variables:
 
@@ -51,10 +54,19 @@ The server route requires these Vercel Preview environment variables:
   `/api/public/membership-connections/exchange` endpoint
 - `PLATOON_MEMBERSHIP_RETURN_URL` — the exact allowlisted HTTPS callback URL,
   ending in `/api/platoon/connect/callback`
+- `PLATOON_MEMBER_WEB_ORIGIN` — optional member-web origin override used to
+  construct the Account > Membership management link
 - `PLATOON_MEMBERSHIP_INTAKE_BYPASS_SECRET` — an optional server-only Vercel
   Preview bypass secret when the Platoon staging deployment is protected
 
 Do not expose these values through `NEXT_PUBLIC_*` variables.
+
+For isolated local certification, the membership endpoints, callback URL, and
+member-web origin may use plain HTTP only when they target `localhost`,
+`127.0.0.1`, or `[::1]` and the site is running in development mode. Production
+builds continue to require HTTPS. Point the intake, authorize, and exchange
+variables at the local Platoon Admin adapter; set the return URL to this site's
+local callback and `PLATOON_MEMBER_WEB_ORIGIN` to the local member-web origin.
 
 The `/events` route contains a responsive public calendar and upcoming-event
 list backed by Platoon's tenant-safe public organization-events feed. The
@@ -103,6 +115,6 @@ npm run build
 ## Content and links
 
 Organization-specific labels, fees, review roles, navigation, and external
-destinations live in `src/config/site.ts`. The current Jotform, contact, social,
-and legacy dues destinations remain available until the replacement workflow
-is validated end to end.
+destinations live in `src/config/site.ts`. The replacement-site preview uses the
+native application and Platoon Account > Membership destinations while the live
+WordPress site remains unchanged until separately authorized.

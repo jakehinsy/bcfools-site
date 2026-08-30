@@ -23,14 +23,14 @@ test("validates personal fields at the public server boundary", () => {
 });
 
 test("uses the server-owned program schema and requiredness", () => {
-  assert.match(contract, /APPLICATION_SCHEMA_VERSION = "2026-08-05"/);
+  assert.match(contract, /APPLICATION_SCHEMA_VERSION = "2026-08-30"/);
   assert.match(membership, /import \{ APPLICATION_SCHEMA_VERSION \} from "\.\/membershipApplicationContract"/);
   assert.match(membership, /requiresDateOfBirth/);
   assert.match(membership, /requiresMailingAddress/);
   assert.match(form, /APPLICATION_SCHEMA_VERSION/);
 });
 
-test("loads paid program configuration without requiring the deferred account connection flow", () => {
+test("loads membership program configuration without requiring the account connection flow", () => {
   const configBlock = membership.slice(
     membership.indexOf("export async function membershipProgramConfiguration"),
     membership.indexOf("export function connectionConfiguration"),
@@ -39,17 +39,28 @@ test("loads paid program configuration without requiring the deferred account co
   assert.doesNotMatch(configBlock, /connectionConfiguration\(\)/);
 });
 
-test("does not include restricted values in payment or success copy", () => {
-  const paymentBlock = form.slice(form.indexOf("payment: {"), form.indexOf("const result ="));
-  assert.doesNotMatch(paymentBlock, /dateOfBirth|addressLine1|postalCode/);
+test("allows only development loopback HTTP for isolated certification", () => {
+  assert.match(membership, /process\.env\.NODE_ENV !== "production"/);
+  assert.match(membership, /hostname === "localhost"/);
+  assert.match(membership, /hostname === "127\.0\.0\.1"/);
+  assert.match(membership, /hostname === "\[::1\]"/);
+  assert.match(membership, /PLATOON_MEMBER_WEB_ORIGIN/);
+});
+
+test("does not collect or forward payment details with a public application", () => {
+  assert.doesNotMatch(form, /sourceToken|savedCard|renewalMode|square-card-container/);
+  assert.doesNotMatch(route, /sourceToken|savedCard|renewalMode|recurringConsentVersion/);
+  assert.match(route, /Object\.hasOwn\(application, "payment"\)/);
   const successBlock = form.slice(form.indexOf('submission.status === "success"'));
   assert.doesNotMatch(successBlock, /dateOfBirth|addressLine1|postalCode/);
 });
 
-test("sets the correct submission expectation before approval and payment", () => {
+test("sets the web-first expectation after submission", () => {
   const successBlock = form.slice(form.indexOf('submission.status === "success"'));
-  assert.match(successBlock, /application receipt/);
-  assert.match(successBlock, /No action is required right now/);
-  assert.match(successBlock, /separate approval email/);
-  assert.doesNotMatch(successBlock, /Sign in to continue|View application/);
+  assert.match(successBlock, /Watch your email/);
+  assert.match(successBlock, /review decision/);
+  assert.match(successBlock, /secure instructions/);
+  assert.match(successBlock, /Platoon web account/);
+  assert.match(successBlock, /Account > Membership/);
+  assert.doesNotMatch(successBlock, /download|App Store|Google Play/i);
 });

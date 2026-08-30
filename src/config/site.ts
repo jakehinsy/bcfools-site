@@ -23,8 +23,8 @@ export const siteConfig = {
   ],
   links: {
     applicationRoute: "/join",
-    renewal: "https://app.platoonapp.com/account/membership/renew?organization=brew-city-fools",
-    newMembership: "https://brewcityfools.com/shop/new-membership/",
+    renewal: "https://app.platoonapp.com/account/membership",
+    newMembership: "/join?type=new#application",
     contact: "/contact",
     international: "https://www.foolsinternational.com/about-us",
     platoon: "https://platoonapp.com",
@@ -41,8 +41,8 @@ export const siteConfig = {
     categoryOverrides: publicEventCategoryOverrides,
   },
   membership: {
-    newMemberPrice: 50,
-    renewalPrice: 35,
+    newMemberPrice: 75,
+    renewalPrice: 50,
     paymentMode: "one-time",
     reviewRoles: ["Membership Trustee", "President"],
     smsConsent: {

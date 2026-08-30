@@ -42,13 +42,13 @@ const membershipSteps = [
   },
   {
     number: "02",
-    title: "Submit dues",
-    copy: `Choose a $${siteConfig.membership.newMemberPrice} new membership or $${siteConfig.membership.renewalPrice} annual renewal.`,
+    title: "Chapter review",
+    copy: "The Membership Trustee and President review each new application.",
   },
   {
     number: "03",
-    title: "Pull up a chair",
-    copy: "Once approved, come to a class, lend a hand, and get to know the crew.",
+    title: "Join on the web",
+    copy: `Once approved, follow the email to your Platoon web account and pay the $${siteConfig.membership.newMemberPrice} dues under Membership.`,
   },
 ];
 
