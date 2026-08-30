@@ -60,12 +60,10 @@ export default function TermsPage() {
       <section>
         <h2>Payments</h2>
         <p>
-          Membership prices and payment timing are shown during the application
-          process. Payments are handled through the identified payment provider.
-          Automatic renewal applies only when that choice is shown and you
-          expressly select it. The authorization continues until you turn it off
-          in Platoon. Choosing manual renewal does not authorize automatic annual
-          charges.
+          The public membership application does not collect payment information.
+          If Brew City FOOLS approves an application, the member can pay dues from
+          Account &gt; Membership in the Platoon web portal. Card information is
+          handled by Square and is subject to Square&apos;s terms and policies.
         </p>
       </section>
 

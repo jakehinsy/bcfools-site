@@ -35,7 +35,7 @@ export default function PrivacyPage() {
         <h2>How we use information</h2>
         <p>We use submitted information to:</p>
         <ul>
-          <li>review new and renewal membership applications;</li>
+          <li>review new membership applications;</li>
           <li>contact applicants about their application or chapter status;</li>
           <li>
             create or connect a Platoon account after email verification;
@@ -73,9 +73,9 @@ export default function PrivacyPage() {
           Information may be available to authorized Brew City officers who
           review applications or administer membership. Platoon and other
           contracted providers may process information only as needed to host,
-          secure, communicate, or operate the approved workflow. Payment details
-          are handled by the payment provider and are not stored by this public
-          website.
+          secure, communicate, or operate the approved workflow. This public
+          website does not collect payment details. Approved members pay through
+          Platoon, where Square handles the card information.
         </p>
         <p>
           We may also disclose information when required by law, to protect the

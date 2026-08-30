@@ -52,16 +52,14 @@ test("homepage event fallback uses a calendar symbol instead of a date-like acti
   assert.doesNotMatch(homePage, /feed\.status === "ready" \? "TBA" : "View"/);
 });
 
-test("membership application requires complete production payment configuration", async () => {
+test("membership application requires the versioned new-application program", async () => {
   const joinPage = await readFile(
     new URL("../src/app/join/page.tsx", import.meta.url),
     "utf8",
   );
 
-  assert.match(joinPage, /square\.environment === "production"/);
-  assert.match(joinPage, /square\.applicationId/);
-  assert.match(joinPage, /square\.locationId/);
-  assert.match(joinPage, /program\.savedCardConsentVersion/);
+  assert.match(joinPage, /program\.enabledApplicationTypes\.includes\("new"\)/);
+  assert.doesNotMatch(joinPage, /square\.(?:ready|environment|applicationId|locationId)/);
 });
 
 test("renewals leave the public application and require a Platoon member account", async () => {
@@ -72,11 +70,37 @@ test("renewals leave the public application and require a Platoon member account
     readFile(new URL("../src/app/join/MembershipApplicationForm.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(config, /app\.platoonapp\.com\/account\/membership\/renew\?organization=brew-city-fools/);
+  assert.match(config, /renewal: "https:\/\/app\.platoonapp\.com\/account\/membership"/);
   assert.match(home, /href=\{siteConfig\.links\.renewal\}/);
-  assert.match(joinPage, /params\.type === "renewal"\) redirect\(siteConfig\.links\.renewal\)/);
+  assert.match(joinPage, /membershipManagementUrl\(siteConfig\.links\.renewal\)/);
+  assert.match(joinPage, /params\.type === "renewal"\) redirect\(renewalUrl\)/);
   assert.doesNotMatch(form, /value="renewal"/);
   assert.match(form, /Sign in to your Platoon account/);
+  assert.doesNotMatch(config, /shop\/membership-renewal|account\/membership\/renew/);
+});
+
+test("new membership entry points stay on the native same-origin application", async () => {
+  const [config, home, joinPage] = await Promise.all([
+    readFile(new URL("../src/config/site.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/join/page.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(config, /applicationRoute: "\/join"/);
+  assert.match(config, /newMembership: "\/join\?type=new#application"/);
+  assert.match(home, /href=\{`\$\{siteConfig\.links\.applicationRoute\}\?type=new#application`\}/);
+  assert.match(joinPage, /href=\{siteConfig\.links\.newMembership\}/);
+  assert.doesNotMatch(config, /jotform|shop\/new-membership|woocommerce/i);
+});
+
+test("membership prices match the approved Brew City dues", async () => {
+  const config = await readFile(
+    new URL("../src/config/site.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(config, /newMemberPrice: 75/);
+  assert.match(config, /renewalPrice: 50/);
 });
 
 test("unused framework starter assets are absent", async () => {

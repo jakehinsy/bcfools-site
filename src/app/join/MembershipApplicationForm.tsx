@@ -2,7 +2,6 @@
 
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Script from "next/script";
 import { siteConfig } from "@/config/site";
 import { APPLICATION_SCHEMA_VERSION } from "@/lib/membershipApplicationContract";
 import { membershipFormDefaults } from "@/lib/platoonConnectionPayload";
@@ -16,9 +15,7 @@ type SubmissionState =
   | {
       status: "success";
       applicationReference: string;
-      nextAction: "await_review" | "check_email";
-      savedCard: { brand: string; lastFour: string };
-      renewalMode: "automatic" | "manual";
+      nextAction: "await_review";
     }
   | { status: "error"; message: string };
 
@@ -32,26 +29,6 @@ const stateOptions = [
 
 const CONNECTION_BINDING_STORAGE_KEY = "bcf_platoon_connect_binding";
 const CONNECTION_HANDOFF_PREFIX = "#platoon-connect=";
-
-type SquareCard = {
-  attach: (selector: string) => Promise<void>;
-  destroy: () => Promise<void>;
-  tokenize: (details: { intent: "STORE"; customerInitiated: true }) => Promise<{
-    status: string;
-    token?: string;
-    errors?: Array<{ message?: string }>;
-  }>;
-};
-
-declare global {
-  interface Window {
-    Square?: {
-      payments: (applicationId: string, locationId: string) => {
-        card: () => Promise<SquareCard>;
-      };
-    };
-  }
-}
 
 function formatMoney(amountMinor: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amountMinor / 100);
@@ -89,60 +66,28 @@ async function beginPlatoonConnection(
 export function MembershipApplicationForm({
   connectionSupportReference,
   connectionStatus,
-  defaultType,
   initialConnection,
   platoonConnectionOrigin,
   platoonSignInAvailable,
-  paymentConfig,
+  programConfig,
+  renewalUrl,
 }: {
   connectionSupportReference: string | null;
   connectionStatus: "connected" | "error" | "unavailable" | null;
-  defaultType: ApplicationType;
   initialConnection: PlatoonConnectionSummary | null;
   platoonConnectionOrigin: string | null;
   platoonSignInAvailable: boolean;
-  paymentConfig: MembershipProgramConfig | null;
+  programConfig: MembershipProgramConfig | null;
+  renewalUrl: string;
 }) {
-  const [applicationType, setApplicationType] =
-    useState<ApplicationType>(defaultType);
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
   const [connectionStarting, setConnectionStarting] = useState(false);
-  const [squareState, setSquareState] = useState<"loading" | "ready" | "error">(
-    paymentConfig?.square.ready ? "loading" : "error",
-  );
   const submissionId = useRef<string | null>(null);
-  const squareCard = useRef<SquareCard | null>(null);
   const initialValues = membershipFormDefaults(initialConnection);
 
-  const amountMinor =
-    applicationType === "new"
-      ? paymentConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100
-      : paymentConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100;
-  const renewalAmountMinor = paymentConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100;
-  const currency = paymentConfig?.program.currency ?? "USD";
-  const squareScript = paymentConfig?.square.environment === "production"
-    ? "https://web.squarecdn.com/v1/square.js"
-    : "https://sandbox.web.squarecdn.com/v1/square.js";
-
-  async function initializeSquare() {
-    if (
-      !window.Square || !paymentConfig?.square.ready ||
-      !paymentConfig.square.applicationId || !paymentConfig.square.locationId
-    ) {
-      setSquareState("error");
-      return;
-    }
-    try {
-      if (squareCard.current) await squareCard.current.destroy();
-      const payments = window.Square.payments(paymentConfig.square.applicationId, paymentConfig.square.locationId);
-      const card = await payments.card();
-      await card.attach("#square-card-container");
-      squareCard.current = card;
-      setSquareState("ready");
-    } catch {
-      setSquareState("error");
-    }
-  }
+  const newMemberAmountMinor = programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100;
+  const renewalAmountMinor = programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100;
+  const currency = programConfig?.program.currency ?? "USD";
 
   useEffect(() => {
     if (window.location.hash.startsWith(CONNECTION_HANDOFF_PREFIX)) {
@@ -186,7 +131,7 @@ export function MembershipApplicationForm({
     if (search.get("platoon_start") !== "1" || !platoonConnectionOrigin) return;
     if (window.location.origin !== platoonConnectionOrigin) {
       const canonicalJoin = new URL("/join", platoonConnectionOrigin);
-      canonicalJoin.searchParams.set("type", applicationType);
+      canonicalJoin.searchParams.set("type", "new");
       canonicalJoin.searchParams.set("platoon_start", "1");
       canonicalJoin.hash = "application";
       window.location.replace(canonicalJoin);
@@ -200,11 +145,11 @@ export function MembershipApplicationForm({
       "",
       `${window.location.pathname}${cleanedSearch ? `?${cleanedSearch}` : ""}#application`,
     );
-    void beginPlatoonConnection(platoonConnectionOrigin, applicationType).catch(() => {
+    void beginPlatoonConnection(platoonConnectionOrigin, "new").catch(() => {
       sessionStorage.removeItem(CONNECTION_BINDING_STORAGE_KEY);
-      window.location.assign(`/join?platoon=unavailable&type=${applicationType}#application`);
+      window.location.assign("/join?platoon=unavailable&type=new#application");
     });
-  }, [applicationType, platoonConnectionOrigin]);
+  }, [platoonConnectionOrigin]);
 
   async function handlePlatoonSignIn(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -217,17 +162,17 @@ export function MembershipApplicationForm({
     try {
       if (window.location.origin !== platoonConnectionOrigin) {
         const canonicalJoin = new URL("/join", platoonConnectionOrigin);
-        canonicalJoin.searchParams.set("type", applicationType);
+        canonicalJoin.searchParams.set("type", "new");
         canonicalJoin.searchParams.set("platoon_start", "1");
         canonicalJoin.hash = "application";
         window.location.assign(canonicalJoin);
         return;
       }
-      await beginPlatoonConnection(platoonConnectionOrigin, applicationType);
+      await beginPlatoonConnection(platoonConnectionOrigin, "new");
     } catch {
       sessionStorage.removeItem(CONNECTION_BINDING_STORAGE_KEY);
       setConnectionStarting(false);
-      window.location.assign(`/join?platoon=unavailable&type=${applicationType}#application`);
+      window.location.assign("/join?platoon=unavailable&type=new#application");
     }
   }
 
@@ -247,27 +192,6 @@ export function MembershipApplicationForm({
     setSubmission({ status: "submitting" });
 
     try {
-      const renewalMode = formData.get("renewalMode");
-      if (
-        !paymentConfig?.program.savedCardConsentVersion ||
-        !paymentConfig.square.ready ||
-        squareState !== "ready" ||
-        !squareCard.current ||
-        (renewalMode !== "automatic" && renewalMode !== "manual") ||
-        (renewalMode === "automatic" && (
-          !paymentConfig.program.recurringConsentVersion || !paymentConfig.square.annualRenewalReady
-        ))
-      ) {
-        submissionId.current = null;
-        setSubmission({ status: "error", message: "Square's secure payment form is not ready. Nothing was submitted or charged." });
-        return;
-      }
-      const tokenization = await squareCard.current.tokenize({ intent: "STORE", customerInitiated: true });
-      if (tokenization.status !== "OK" || !tokenization.token) {
-        submissionId.current = null;
-        setSubmission({ status: "error", message: tokenization.errors?.[0]?.message || "Square could not save this card. Review the details or use a different card." });
-        return;
-      }
       const response = await fetch("/api/membership-applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -275,7 +199,7 @@ export function MembershipApplicationForm({
           submissionId: currentSubmissionId,
           application: {
             schemaVersion: APPLICATION_SCHEMA_VERSION,
-            applicationType,
+            applicationType: "new",
             applicant: {
               firstName: formData.get("firstName"),
               lastName: formData.get("lastName"),
@@ -288,7 +212,7 @@ export function MembershipApplicationForm({
                 city: formData.get("city"),
                 state: formData.get("addressState"),
                 postalCode: formData.get("postalCode"),
-                countryCode: paymentConfig.program.defaultCountryCode,
+                countryCode: programConfig?.program.defaultCountryCode ?? "US",
               },
             },
             fireService: {
@@ -312,33 +236,25 @@ export function MembershipApplicationForm({
                 disclosureVersion: siteConfig.membership.smsConsent.version,
               },
             },
-            payment: {
-              provider: "square",
-              sourceToken: tokenization.token,
-              renewalMode,
-              savedCardConsentVersion: paymentConfig.program.savedCardConsentVersion,
-              recurringConsentVersion: renewalMode === "automatic"
-                ? paymentConfig.program.recurringConsentVersion
-                : null,
-            },
           },
         }),
       });
       const result = (await response.json()) as {
         applicationReference?: string;
-        nextAction?: "await_review" | "check_email";
-        savedCard?: { brand?: string; lastFour?: string };
-        renewalMode?: "automatic" | "manual";
+        reviewStatus?: "submitted";
+        paymentStatus?: "not_started";
+        nextAction?: "await_review";
+        replayed?: boolean;
         error?: { code?: string };
       };
 
       if (
         !response.ok ||
         !result.applicationReference ||
-        !result.savedCard?.brand ||
-        !result.savedCard.lastFour ||
-        (result.renewalMode !== "automatic" && result.renewalMode !== "manual") ||
-        (result.nextAction !== "await_review" && result.nextAction !== "check_email")
+        result.reviewStatus !== "submitted" ||
+        result.paymentStatus !== "not_started" ||
+        typeof result.replayed !== "boolean" ||
+        result.nextAction !== "await_review"
       ) {
         submissionId.current = null;
         const message =
@@ -355,8 +271,6 @@ export function MembershipApplicationForm({
         status: "success",
         applicationReference: result.applicationReference,
         nextAction: result.nextAction,
-        savedCard: { brand: result.savedCard.brand, lastFour: result.savedCard.lastFour },
-        renewalMode: result.renewalMode,
       });
       form.reset();
     } catch {
@@ -370,9 +284,6 @@ export function MembershipApplicationForm({
 
   return (
     <>
-      {paymentConfig?.square.ready ? (
-        <Script id="square-web-payments" onReady={() => void initializeSquare()} src={squareScript} strategy="afterInteractive" />
-      ) : null}
       {initialConnection || platoonSignInAvailable || connectionStatus ? (
         <section className={styles.platoonConnection} aria-labelledby="platoon-connection-title">
           {initialConnection ? (
@@ -424,39 +335,29 @@ export function MembershipApplicationForm({
 
       <form className={styles.form} onChange={resetAttempt} onSubmit={handleSubmit}>
       <div className={styles.paymentNotice} role="note">
-        <strong>How payment works</strong>
+        <strong>What happens after you apply</strong>
         <p>
-          Your application is reviewed before any charge. Square securely saves
-          the payment method; Brew City FOOLS and Platoon never receive the full card number.
+          No payment is collected with this application. Watch your email for
+          the chapter&apos;s decision and, if approved, secure instructions for your
+          Platoon web account and dues payment.
         </p>
       </div>
 
       <fieldset className={styles.fieldset}>
         <legend>What can we help you with?</legend>
         <p className={styles.legendHelp}>
-          {paymentConfig?.program.chapterName ?? siteConfig.name}{paymentConfig?.program.chapterState ? `, ${paymentConfig.program.chapterState}` : ""} | Application date is recorded when you submit.
+          {programConfig?.program.chapterName ?? siteConfig.name}{programConfig?.program.chapterState ? `, ${programConfig.program.chapterState}` : ""} | Application date is recorded when you submit.
         </p>
         <div className={styles.typeGrid}>
-          <label
-            className={`${styles.typeCard} ${applicationType === "new" ? styles.typeCardSelected : ""}`}
-          >
-            <input
-              checked={applicationType === "new"}
-              name="applicationType"
-              onChange={() => {
-                setApplicationType("new");
-              }}
-              type="radio"
-              value="new"
-            />
+          <div className={`${styles.typeCard} ${styles.typeCardSelected}`}>
             <span>
               <strong>New membership</strong>
               <small>Join the Brew City chapter</small>
             </span>
-            <b>{formatMoney(paymentConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100, currency)}</b>
-          </label>
+            <b>{formatMoney(newMemberAmountMinor, currency)}</b>
+          </div>
 
-          <Link className={`${styles.typeCard} ${styles.typeCardLink}`} href={siteConfig.links.renewal}>
+          <Link className={`${styles.typeCard} ${styles.typeCardLink}`} href={renewalUrl}>
             <span>
               <strong>Annual renewal</strong>
               <small>Sign in to your Platoon account</small>
@@ -495,7 +396,7 @@ export function MembershipApplicationForm({
             <input
               autoComplete="bday"
               name="dateOfBirth"
-              required={paymentConfig?.program.requiresDateOfBirth ?? true}
+              required={programConfig?.program.requiresDateOfBirth ?? true}
               type="date"
             />
             <small>Required by FOOLS International. Visible only to authorized membership administrators.</small>
@@ -533,7 +434,7 @@ export function MembershipApplicationForm({
         <div className={styles.fieldGrid}>
           <label className={`${styles.field} ${styles.fieldWide}`}>
             <span>Home address</span>
-            <input autoComplete="address-line1" name="addressLine1" required={paymentConfig?.program.requiresMailingAddress ?? true} />
+            <input autoComplete="address-line1" name="addressLine1" required={programConfig?.program.requiresMailingAddress ?? true} />
           </label>
           <label className={`${styles.field} ${styles.fieldWide}`}>
             <span>Address line 2</span>
@@ -542,18 +443,18 @@ export function MembershipApplicationForm({
           </label>
           <label className={styles.field}>
             <span>City</span>
-            <input autoComplete="address-level2" name="city" required={paymentConfig?.program.requiresMailingAddress ?? true} />
+            <input autoComplete="address-level2" name="city" required={programConfig?.program.requiresMailingAddress ?? true} />
           </label>
           <label className={styles.field}>
             <span>State</span>
-            <select autoComplete="address-level1" defaultValue={paymentConfig?.program.chapterState ?? "WI"} name="addressState" required={paymentConfig?.program.requiresMailingAddress ?? true}>
+            <select autoComplete="address-level1" defaultValue={programConfig?.program.chapterState ?? "WI"} name="addressState" required={programConfig?.program.requiresMailingAddress ?? true}>
               <option disabled value="">Select state</option>
               {stateOptions.map((state) => <option key={state} value={state}>{state}</option>)}
             </select>
           </label>
           <label className={styles.field}>
             <span>ZIP code</span>
-            <input autoComplete="postal-code" inputMode="numeric" name="postalCode" pattern="[0-9]{5}(-[0-9]{4})?" required={paymentConfig?.program.requiresMailingAddress ?? true} />
+            <input autoComplete="postal-code" inputMode="numeric" name="postalCode" pattern="[0-9]{5}(-[0-9]{4})?" required={programConfig?.program.requiresMailingAddress ?? true} />
           </label>
         </div>
       </fieldset>
@@ -619,43 +520,6 @@ export function MembershipApplicationForm({
       </fieldset>
 
       <fieldset className={styles.fieldset}>
-        <legend>Payment and renewal</legend>
-        <p className={styles.legendHelp}>
-          Nothing is charged today. If your application is approved, Square will charge {formatMoney(amountMinor, currency)}.
-        </p>
-        {squareState === "error" ? (
-          <div className={styles.paymentUnavailable} role="alert">
-            <strong>Online application temporarily unavailable</strong>
-            <p>We could not load the secure payment form. Refresh the page or contact Brew City membership for help. Your application has not been submitted and nothing was charged.</p>
-          </div>
-        ) : (
-          <div className={styles.squareField}>
-            <span>Payment method</span>
-            <div aria-busy={squareState === "loading"} id="square-card-container" />
-            {squareState === "loading" ? <small>Loading Square&apos;s secure card form...</small> : null}
-          </div>
-        )}
-        <label className={styles.attestation}>
-          <input disabled={squareState !== "ready"} name="savedCardAuthorization" required type="checkbox" />
-          <span>
-            I authorize Brew City FOOLS to save this payment method with Square and charge {formatMoney(amountMinor, currency)} only if this application is approved. I understand that nothing will be charged today and that a denied application will not be charged.
-          </span>
-        </label>
-        <div className={styles.renewalChoices} role="radiogroup" aria-label="Membership renewal choice">
-          {paymentConfig?.square.annualRenewalReady ? (
-          <label>
-            <input name="renewalMode" required type="radio" value="automatic" />
-            <span><strong>Auto-renew annually</strong><b>Recommended</b><small>After the first paid year, charge the saved card annually at the renewal price shown before each renewal. This authorization continues until you turn it off in Platoon. Brew City uses the successful approval-payment anniversary and a 30-day failed-payment grace period.</small></span>
-          </label>
-          ) : null}
-          <label>
-            <input name="renewalMode" required type="radio" value="manual" />
-            <span><strong>Renew manually</strong><small>Do not charge the card automatically. Platoon will remind you before the membership expires.</small></span>
-          </label>
-        </div>
-      </fieldset>
-
-      <fieldset className={styles.fieldset}>
         <legend>Finish up</legend>
         <label className={styles.attestation}>
           <input name="attestation" required type="checkbox" />
@@ -678,41 +542,34 @@ export function MembershipApplicationForm({
         </div>
       </fieldset>
 
-      <div className={styles.checkoutSummary}>
-        <dl>
-          <div><dt>Due today</dt><dd>{formatMoney(0, currency)}</dd></div>
-          <div><dt>Charged only if approved</dt><dd>{formatMoney(amountMinor, currency)}</dd></div>
-          <div><dt>Annual renewal</dt><dd>{formatMoney(renewalAmountMinor, currency)}</dd></div>
-        </dl>
-        <small>{paymentConfig?.square.annualRenewalReady ? "Your required renewal choice controls whether the annual renewal is automatic or manual." : "Annual renewals are completed manually."}</small>
-      </div>
-
       <button
         className={styles.submitButton}
-        disabled={squareState !== "ready" || submission.status === "submitting" || submission.status === "success"}
+        disabled={submission.status === "submitting" || submission.status === "success"}
         type="submit"
       >
         {submission.status === "submitting"
           ? "Sending application…"
           : submission.status === "success"
             ? "Application sent"
-            : "Submit application - $0 due today"}
+            : "Submit for chapter review"}
       </button>
 
       {submission.status === "success" ? (
         <div className={styles.submissionResult} role="status" tabIndex={-1}>
-          <strong>Application submitted. No charge was made.</strong>
+          <strong>Application submitted.</strong>
           <p>
-            We sent a Brew City FOOLS application receipt to your email. No action is required right now. Brew City FOOLS will review your application. If approved, Square will charge {formatMoney(amountMinor, currency)} to the {submission.savedCard.brand} ending in {submission.savedCard.lastFour}. After payment succeeds, we will send a separate approval email with a secure link to set up or sign in to Platoon access.
+            Watch your email for the Brew City FOOLS review decision. If approved,
+            you will receive secure instructions to create or sign in to your
+            Platoon web account. {`Your membership will be active with ${formatMoney(newMemberAmountMinor, currency)} in dues owed, payable under Account > Membership.`}
           </p>
-          <p>{submission.renewalMode === "automatic" ? "Auto-renew annually selected." : "Manual renewal selected."} Reference: {submission.applicationReference}</p>
+          <p>Reference: {submission.applicationReference}</p>
         </div>
       ) : null}
 
       {submission.status === "error" ? (
         <div className={styles.errorResult} role="alert">
           <strong>Application could not be confirmed.</strong>
-          <p>{submission.message} Nothing was charged.</p>
+          <p>{submission.message}</p>
         </div>
       ) : null}
 
