@@ -28,7 +28,8 @@ export const siteConfig = {
     contact: "/contact",
     international: "https://www.foolsinternational.com/about-us",
     platoon: "https://platoonapp.com",
-    memberDashboard: "https://app.platoonapp.com",
+    memberDashboard:
+      "https://app.platoonapp.com/organization-join?organization=brew-city-fools",
     privacy: "/privacy",
     terms: "/terms",
     facebook: "https://www.facebook.com/brewcity.fools",
