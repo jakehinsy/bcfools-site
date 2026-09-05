@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   INITIAL_UPCOMING_EVENT_COUNT,
   nextPublicEvent,
+  publicEventExternalActionLabel,
   publicEventEndDateKey,
   publicEventIsUpcoming,
   publicEventStartDateKey,
@@ -164,6 +165,21 @@ test("accepts a nullable, credential-free HTTPS external event URL", () => {
       events: [{ ...publicEvent, externalUrl: "  https://example.org/register  " }],
     }, "brew-city-fools")?.events[0]?.externalUrl,
     "https://example.org/register",
+  );
+});
+
+test("labels only clear Eventbrite hosts as Eventbrite registration", () => {
+  assert.equal(
+    publicEventExternalActionLabel("https://www.eventbrite.com/e/rit-123"),
+    "Register on Eventbrite",
+  );
+  assert.equal(
+    publicEventExternalActionLabel("https://events.example.org/register"),
+    "Open event link",
+  );
+  assert.equal(
+    publicEventExternalActionLabel("https://eventbrite.com.example.org/register"),
+    "Open event link",
   );
 });
 

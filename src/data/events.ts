@@ -27,6 +27,18 @@ export type EventCategoryOverrides = Record<
 
 export const INITIAL_UPCOMING_EVENT_COUNT = 2;
 
+export function publicEventExternalActionLabel(value: string | null | undefined) {
+  if (!value) return "Open event link";
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === "eventbrite.com" || hostname.endsWith(".eventbrite.com")
+      ? "Register on Eventbrite"
+      : "Open event link";
+  } catch {
+    return "Open event link";
+  }
+}
+
 function timestampDateKey(timestamp: string, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",

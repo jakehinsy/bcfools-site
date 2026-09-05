@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { siteConfig } from "@/config/site";
-import { publicEventTimeLabel, websiteEventsFromPlatoon } from "@/data/events";
+import { publicEventExternalActionLabel, publicEventTimeLabel, websiteEventsFromPlatoon } from "@/data/events";
 import { loadPublicOrganizationEvents } from "@/lib/platoonPublicEvents";
 import { ArrowIcon } from "../../ArrowIcon";
 import { LegalLinks } from "../../LegalLinks";
@@ -76,7 +76,7 @@ export default async function PublicEventDetailPage({ params }: { params: Promis
               {event.summary ? <p className={styles.summary}>{event.summary}</p> : null}
               <div className={styles.actions}>
                 {event.externalUrl ? (
-                  <a href={event.externalUrl} rel="noreferrer" target="_blank">Open event link <ArrowIcon /></a>
+                  <a href={event.externalUrl} rel="noreferrer" target="_blank">{publicEventExternalActionLabel(event.externalUrl)} <ArrowIcon /></a>
                 ) : null}
                 {event.flyer ? (
                   <a className={styles.secondaryAction} href={event.flyer.originalUrl} rel="noreferrer" target="_blank">{originalLabel}</a>
