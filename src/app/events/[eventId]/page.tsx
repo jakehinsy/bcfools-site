@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { siteConfig } from "@/config/site";
-import { publicEventTimeLabel, websiteEventsFromPlatoon } from "@/data/events";
+import { publicEventDateLabel, publicEventTimeLabel, websiteEventsFromPlatoon } from "@/data/events";
 import { loadPublicOrganizationEvents } from "@/lib/platoonPublicEvents";
 import { ArrowIcon } from "../../ArrowIcon";
 import { LegalLinks } from "../../LegalLinks";
@@ -17,16 +17,6 @@ export const metadata: Metadata = {
   title: "Event details",
   description: "Public event details from Brew City F.O.O.L.S.",
 };
-
-function eventDateLabel(startsAt: string, timeZone: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    month: "long",
-    timeZone,
-    weekday: "long",
-    year: "numeric",
-  }).format(new Date(startsAt));
-}
 
 export default async function PublicEventDetailPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
@@ -60,7 +50,7 @@ export default async function PublicEventDetailPage({ params }: { params: Promis
               <div className={styles.schedule}>
                 <div>
                   <span>Date</span>
-                  <strong>{eventDateLabel(event.startsAt, event.timeZone)}</strong>
+                  <strong>{publicEventDateLabel(event)}</strong>
                 </div>
                 <div>
                   <span>Time</span>

@@ -44,6 +44,19 @@ export function publicEventStartDateKey(event: PublicEvent) {
     : timestampDateKey(event.startsAt, event.timeZone);
 }
 
+export function publicEventDateLabel(event: PublicEvent) {
+  // Format the same calendar date used by the calendar, without shifting
+  // date-only all-day events into the previous day in western time zones.
+  const dateKey = publicEventStartDateKey(event);
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+    weekday: "long",
+    year: "numeric",
+  }).format(new Date(`${dateKey}T12:00:00.000Z`));
+}
+
 export function publicEventEndDateKey(event: PublicEvent) {
   if (!event.endsAt) return publicEventStartDateKey(event);
   return event.allDay
