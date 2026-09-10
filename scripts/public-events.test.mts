@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   INITIAL_UPCOMING_EVENT_COUNT,
   nextPublicEvent,
+  publicEventDateLabel,
   publicEventEndDateKey,
   publicEventIsUpcoming,
   publicEventStartDateKey,
@@ -357,6 +358,33 @@ test("formats all-day, legacy, timezone-aware, and multi-day events canonically"
     endsAt: "2026-08-11T16:00:00.000Z",
     allDay: false,
   }), "9:00 AM - Aug 11, 11:00 AM");
+});
+
+test("event detail dates preserve all-day calendar dates and local timed dates", () => {
+  const event: PublicEvent = {
+    id: publicEvent.eventKey,
+    title: "BCF Hands On Training",
+    summary: null,
+    externalUrl: null,
+    startsAt: "2026-09-26T00:00:00.000Z",
+    endsAt: "2026-09-27T23:59:59.999Z",
+    allDay: true,
+    timeZone: "America/Chicago",
+    location: null,
+    category: { key: publicEvent.categoryKey, label: "Training", color: "#2563eb" },
+    flyer: null,
+  };
+  for (const timeZone of ["America/Chicago", "America/Los_Angeles", "Pacific/Kiritimati"]) {
+    assert.equal(publicEventDateLabel({ ...event, timeZone }), "Saturday, September 26, 2026");
+  }
+  assert.equal(publicEventTimeLabel(event), "All day through Sep 27");
+  assert.equal(publicEventDateLabel({ ...event, allDay: false }), "Friday, September 25, 2026");
+  assert.equal(publicEventDateLabel({ ...event, allDay: false, timeZone: "UTC" }), "Saturday, September 26, 2026");
+  assert.equal(publicEventDateLabel({
+    ...event,
+    allDay: false,
+    startsAt: "2026-09-26T06:00:00.000Z",
+  }), "Saturday, September 26, 2026");
 });
 
 test("selects the earliest event that is still in progress or upcoming", () => {
