@@ -355,11 +355,15 @@
   margin-top: 30px;
 }
 
-.applicationFallbackActions a {
+.applicationFallbackActions a,
+.applicationFallbackActions button {
   align-items: center;
   background: var(--red-600);
+  border: 0;
   color: var(--white);
+  cursor: pointer;
   display: inline-flex;
+  font-family: inherit;
   font-size: 0.72rem;
   font-weight: 900;
   gap: 12px;
@@ -393,6 +397,7 @@
 }
 
 .applicationFallbackActions a:focus-visible,
+.applicationFallbackActions button:focus-visible,
 .applicationFallbackHelp a:focus-visible {
   outline: 3px solid #f0b323;
   outline-offset: 4px;

@@ -198,17 +198,16 @@ export default async function JoinPage({
               ) : (
                 <div className={styles.applicationFallback}>
                   <p className={styles.eyebrow}>Membership applications</p>
-                  <h2>Choose your membership option.</h2>
+                  <h2>Applications are temporarily unavailable.</h2>
                   <p>
-                    Start a new Brew City membership or renew for another year.
-                    Choose the option that fits to continue online.
+                    Please try again shortly, or contact our membership team for help.
                   </p>
                   <div className={styles.applicationFallbackActions}>
-                    <a href={siteConfig.links.newMembership}>
-                      New membership <ArrowIcon />
-                    </a>
-                    <a href={renewalUrl}>
-                      Annual renewal <ArrowIcon />
+                    <form action={`${siteConfig.links.applicationRoute}#application`} method="get">
+                      <button type="submit">Try again <ArrowIcon /></button>
+                    </form>
+                    <a href={`mailto:${siteConfig.legal.contactEmail}`}>
+                      Email membership <ArrowIcon />
                     </a>
                   </div>
                   <p className={styles.applicationFallbackHelp}>
