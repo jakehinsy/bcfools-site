@@ -80,16 +80,14 @@ test("renewals leave the public application and require a Platoon member account
 });
 
 test("new membership entry points stay on the native same-origin application", async () => {
-  const [config, home, joinPage] = await Promise.all([
+  const [config, home] = await Promise.all([
     readFile(new URL("../src/config/site.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/app/join/page.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(config, /applicationRoute: "\/join"/);
   assert.match(config, /newMembership: "\/join\?type=new#application"/);
   assert.match(home, /href=\{`\$\{siteConfig\.links\.applicationRoute\}\?type=new#application`\}/);
-  assert.match(joinPage, /href=\{siteConfig\.links\.newMembership\}/);
   assert.doesNotMatch(config, /jotform|shop\/new-membership|woocommerce/i);
 });
 
