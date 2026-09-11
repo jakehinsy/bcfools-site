@@ -61,9 +61,9 @@ export default function TermsPage() {
         <h2>Payments</h2>
         <p>
           The public membership application does not collect payment information.
-          If Brew City FOOLS approves an application, the member can pay dues from
-          Account &gt; Membership in the Platoon web portal. Card information is
-          handled by Square and is subject to Square&apos;s terms and policies.
+          Dues collection is not open yet. After approval and completed Platoon
+          onboarding, the chapter will provide instructions when dues collection
+          becomes available.
         </p>
       </section>
 
@@ -71,7 +71,7 @@ export default function TermsPage() {
         <h2>Content and external services</h2>
         <p>
           Chapter information may change, and the site may contain links to
-          Platoon, Square, FOOLS International, social networks, or other
+          Platoon, FOOLS International, social networks, or other
           services. Those services operate under their own terms and policies.
           Brew City names, logos, photographs, and original site content may not
           be reused in a way that implies chapter endorsement without permission.

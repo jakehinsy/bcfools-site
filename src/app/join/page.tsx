@@ -141,7 +141,7 @@ export default async function JoinPage({
                       <span>03</span>
                       <div>
                         <strong>Continue by email</strong>
-                        <p>If approved, follow the secure email instructions to claim or sign in to your Platoon web account and pay dues under Membership.</p>
+                        <p>If approved, follow the secure email instructions to claim or sign in to your Platoon account. The chapter will provide dues instructions after you complete onboarding.</p>
                       </div>
                     </li>
                   </ol>

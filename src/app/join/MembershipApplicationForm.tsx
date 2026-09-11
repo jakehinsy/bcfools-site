@@ -339,7 +339,8 @@ export function MembershipApplicationForm({
         <p>
           No payment is collected with this application. Watch your email for
           the chapter&apos;s decision and, if approved, secure instructions for your
-          Platoon web account and dues payment.
+          Platoon account. Dues collection is not open yet. The chapter will provide
+          dues instructions after approval and completed Platoon onboarding.
         </p>
       </div>
 
