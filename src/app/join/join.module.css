@@ -447,7 +447,7 @@
   cursor: pointer;
   display: grid;
   gap: 12px;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   min-height: 96px;
   padding: 18px;
   transition: border-color 160ms ease, background-color 160ms ease;
@@ -458,13 +458,7 @@
 }
 
 .typeCardLink {
-  grid-template-columns: minmax(0, 1fr) auto;
   text-decoration: none;
-}
-
-.typeCardLink > b {
-  grid-column: 2;
-  grid-row: 1;
 }
 
 .typeCardSelected {
@@ -500,7 +494,8 @@
   font-family: var(--font-oswald), Impact, sans-serif;
   font-size: 1.4rem;
   grid-column: 2;
-  justify-self: start;
+  grid-row: 1;
+  justify-self: end;
 }
 
 .fieldGrid {

@@ -61,9 +61,8 @@ export default function TermsPage() {
         <h2>Payments</h2>
         <p>
           The public membership application does not collect payment information.
-          Dues collection is not open yet. After approval and completed Platoon
-          onboarding, the chapter will provide instructions when dues collection
-          becomes available.
+          After approval and completed Platoon onboarding, the chapter will
+          provide dues instructions.
         </p>
       </section>
 
