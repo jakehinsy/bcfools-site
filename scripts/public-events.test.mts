@@ -66,6 +66,22 @@ const publicEvent = {
   contactPhone: "must not reach the website",
 };
 
+test("accepts a full event description as the public summary within the 2000-character limit", () => {
+  for (const length of [501, 2000]) {
+    const summary = "x".repeat(length);
+    const parsed = parsePublicOrganizationEventsPayload({
+      organizationSlug: "brew-city-fools", ...range,
+      events: [{ ...publicEvent, summary }],
+    }, "brew-city-fools");
+    assert.equal(parsed?.events[0]?.summary, summary);
+    assert.equal("body" in (parsed?.events[0] ?? {}), false);
+  }
+  assert.equal(parsePublicOrganizationEventsPayload({
+    organizationSlug: "brew-city-fools", ...range,
+    events: [{ ...publicEvent, summary: "x".repeat(2001) }],
+  }, "brew-city-fools"), null);
+});
+
 test("parses only the bounded public organization-event contract", () => {
   assert.deepEqual(
     parsePublicOrganizationEventsPayload({
