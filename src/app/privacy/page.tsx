@@ -107,7 +107,7 @@ export default function PrivacyPage() {
       <section>
         <h2>Other websites and updates</h2>
         <p>
-          Links to Platoon, Square, FOOLS International, social networks, and
+          Links to Platoon, FOOLS International, social networks, and
           other services are governed by their own privacy practices. We may
           update this policy as the website or membership workflow changes. The
           effective date above identifies the current version.
