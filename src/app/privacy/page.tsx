@@ -74,7 +74,7 @@ export default function PrivacyPage() {
           review applications or administer membership. Platoon and other
           contracted providers may process information only as needed to host,
           secure, communicate, or operate the approved workflow. This public
-          website does not collect payment details. Dues collection is not open yet.
+          website does not collect payment details.
         </p>
         <p>
           We may also disclose information when required by law, to protect the
