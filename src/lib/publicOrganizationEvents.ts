@@ -157,7 +157,7 @@ function parseEvent(value: unknown): PlatoonPublicOrganizationEvent | null {
 
   const eventKey = uuid(event.eventKey);
   const title = requiredString(event.title, 200);
-  const summary = optionalString(event.summary, 500);
+  const summary = optionalString(event.summary, 2000);
   const eventExternalUrl = externalUrl(event.externalUrl);
   const startsAt = isoTimestamp(event.startsAt);
   const endsAt = event.endsAt === null ? null : isoTimestamp(event.endsAt);
