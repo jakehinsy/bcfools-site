@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { siteConfig } from "@/config/site";
 import { APPLICATION_SCHEMA_VERSION } from "@/lib/membershipApplicationContract";
 import { membershipFormDefaults } from "@/lib/platoonConnectionPayload";
@@ -9,6 +10,27 @@ import type { MembershipProgramConfig, PlatoonConnectionSummary } from "@/lib/pl
 import styles from "./join.module.css";
 
 type ApplicationType = "new" | "renewal";
+type TurnstileApi = {
+  render: (container: HTMLElement, options: {
+    sitekey: string;
+    action: string;
+    appearance: "always";
+    size: "flexible";
+    theme: "light";
+    callback: (token: string) => void;
+    "expired-callback": () => void;
+    "error-callback": () => void;
+  }) => string;
+  remove: (widgetId: string) => void;
+  reset: (widgetId: string) => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
+
 type SubmissionState =
   | { status: "idle" }
   | { status: "submitting" }
@@ -82,12 +104,55 @@ export function MembershipApplicationForm({
 }) {
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
   const [connectionStarting, setConnectionStarting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const submissionId = useRef<string | null>(null);
+  const formStartedAt = useRef(new Date().toISOString());
+  const turnstileContainer = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetId = useRef<string | null>(null);
   const initialValues = membershipFormDefaults(initialConnection);
+  const abuseProtection = programConfig?.abuseProtection;
+  const turnstileAction = abuseProtection?.action ?? "membership_application";
+  const turnstileRequired = abuseProtection?.required ?? false;
+  const turnstileSiteKey = abuseProtection?.siteKey ?? null;
+  const turnstileEnabled = Boolean(abuseProtection?.enabled && turnstileSiteKey);
 
   const newMemberAmountMinor = programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100;
   const renewalAmountMinor = programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100;
   const currency = programConfig?.program.currency ?? "USD";
+
+  const renderTurnstile = useCallback(() => {
+    if (
+      !turnstileEnabled ||
+      !turnstileSiteKey ||
+      !turnstileContainer.current ||
+      !window.turnstile ||
+      turnstileWidgetId.current
+    ) return;
+    turnstileWidgetId.current = window.turnstile.render(turnstileContainer.current, {
+      sitekey: turnstileSiteKey,
+      action: turnstileAction,
+      appearance: "always",
+      size: "flexible",
+      theme: "light",
+      callback: setTurnstileToken,
+      "expired-callback": () => setTurnstileToken(""),
+      "error-callback": () => setTurnstileToken(""),
+    });
+  }, [turnstileAction, turnstileEnabled, turnstileSiteKey]);
+
+  const resetTurnstile = useCallback(() => {
+    setTurnstileToken("");
+    if (turnstileWidgetId.current && window.turnstile) {
+      window.turnstile.reset(turnstileWidgetId.current);
+    }
+  }, []);
+
+  useEffect(() => () => {
+    if (turnstileWidgetId.current && window.turnstile) {
+      window.turnstile.remove(turnstileWidgetId.current);
+      turnstileWidgetId.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (window.location.hash.startsWith(CONNECTION_HANDOFF_PREFIX)) {
@@ -187,6 +252,13 @@ export function MembershipApplicationForm({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    if (turnstileRequired && !turnstileToken) {
+      setSubmission({
+        status: "error",
+        message: "Please complete the security check before submitting your application.",
+      });
+      return;
+    }
     const currentSubmissionId = submissionId.current ?? crypto.randomUUID();
     submissionId.current = currentSubmissionId;
     setSubmission({ status: "submitting" });
@@ -236,6 +308,13 @@ export function MembershipApplicationForm({
                 disclosureVersion: siteConfig.membership.smsConsent.version,
               },
             },
+            ...(turnstileEnabled && turnstileToken ? {
+              abuseProtection: {
+                turnstileToken,
+                formStartedAt: formStartedAt.current,
+                website: formData.get("website"),
+              },
+            } : {}),
           },
         }),
       });
@@ -260,10 +339,13 @@ export function MembershipApplicationForm({
         const message =
           result.error?.code === "RATE_LIMITED"
             ? "The application service is busy right now. Please wait a minute and try again."
+            : result.error?.code === "BOT_CHECK_FAILED"
+              ? "The security check expired or could not be verified. Please complete it again."
             : result.error?.code === "VALIDATION_FAILED"
               ? "Please review the form fields and try again."
               : "We couldn’t submit this application. Please try again in a moment.";
         setSubmission({ status: "error", message });
+        resetTurnstile();
         return;
       }
 
@@ -275,6 +357,7 @@ export function MembershipApplicationForm({
       form.reset();
     } catch {
       submissionId.current = null;
+      resetTurnstile();
       setSubmission({
         status: "error",
         message: "We couldn’t reach the application service. Please check your connection and try again.",
@@ -334,6 +417,17 @@ export function MembershipApplicationForm({
       ) : null}
 
       <form className={styles.form} onChange={resetAttempt} onSubmit={handleSubmit}>
+      {turnstileEnabled ? (
+        <Script
+          onReady={renderTurnstile}
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          strategy="afterInteractive"
+        />
+      ) : null}
+      <label aria-hidden="true" className={styles.honeypot}>
+        <span>Website</span>
+        <input autoComplete="off" name="website" tabIndex={-1} />
+      </label>
       <div className={styles.paymentNotice} role="note">
         <strong>What happens after you apply</strong>
         <p>
@@ -543,9 +637,20 @@ export function MembershipApplicationForm({
         </div>
       </fieldset>
 
+      {turnstileEnabled ? (
+        <div className={styles.securityCheck}>
+          <div ref={turnstileContainer} />
+          <p>This security check helps us keep automated spam out of the chapter&apos;s review queue.</p>
+        </div>
+      ) : null}
+
       <button
         className={styles.submitButton}
-        disabled={submission.status === "submitting" || submission.status === "success"}
+        disabled={
+          submission.status === "submitting" ||
+          submission.status === "success" ||
+          Boolean(turnstileRequired && !turnstileToken)
+        }
         type="submit"
       >
         {submission.status === "submitting"

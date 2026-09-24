@@ -197,6 +197,15 @@
   margin-top: 32px;
 }
 
+.honeypot {
+  block-size: 1px;
+  clip-path: inset(50%);
+  inline-size: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+}
+
 .platoonConnection {
   border-bottom: 1px solid var(--gray-100);
   padding-block: 28px;
@@ -797,6 +806,28 @@
   text-transform: uppercase;
   transition: background-color 160ms ease, transform 160ms ease;
   width: 100%;
+}
+
+.securityCheck {
+  display: grid;
+  gap: 8px;
+  margin-top: 32px;
+}
+
+.securityCheck > div {
+  min-height: 65px;
+  width: 100%;
+}
+
+.securityCheck p {
+  color: #74757d;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.securityCheck + .submitButton {
+  margin-top: 16px;
 }
 
 .submitButton:hover {

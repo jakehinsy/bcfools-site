@@ -64,3 +64,22 @@ test("sets the web-first expectation after submission", () => {
   assert.match(successBlock, /Account > Membership/);
   assert.doesNotMatch(successBlock, /download|App Store|Google Play/i);
 });
+
+test("collects Turnstile proof and keeps it inside the signed Platoon application", () => {
+  assert.match(form, /challenges\.cloudflare\.com\/turnstile\/v0\/api\.js\?render=explicit/);
+  assert.match(form, /turnstileAction/);
+  assert.match(form, /turnstileToken/);
+  assert.match(form, /formStartedAt/);
+  assert.match(form, /name="website"/);
+  assert.match(route, /abuseProtectionProof/);
+  assert.match(route, /const rawBody = JSON\.stringify\(application\)/);
+  assert.match(route, /signedProgramHeaders\(\{/);
+});
+
+test("derives only an opaque network key from Vercel's trusted client address", () => {
+  assert.match(route, /x-vercel-forwarded-for/);
+  assert.match(route, /membership-network-v1:/);
+  assert.match(route, /createHmac\("sha256", secret\)/);
+  assert.match(route, /networkFingerprint: networkFingerprint\(request, secret\)/);
+  assert.doesNotMatch(form, /networkFingerprint/);
+});
