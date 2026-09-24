@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHmac } from "node:crypto";
 import { siteConfig } from "@/config/site";
 import {
   APPLICATION_SCHEMA_VERSION,
@@ -44,6 +45,12 @@ type ApplicationPayload = {
   communications: {
     sms: { consent: boolean; disclosureVersion: string };
   };
+  abuseProtection?: {
+    turnstileToken: string;
+    formStartedAt: string;
+    website: string;
+    networkFingerprint: string | null;
+  };
 };
 
 type SubmissionBody = { submissionId: string; application: ApplicationPayload };
@@ -57,6 +64,31 @@ function requiredString(value: unknown, maxLength: number): string | null {
 function optionalString(value: unknown, maxLength: number): string | null | undefined {
   if (value === null || value === undefined || value === "") return null;
   return requiredString(value, maxLength) ?? undefined;
+}
+
+function abuseProtectionProof(value: unknown): ApplicationPayload["abuseProtection"] | null | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const proof = value as Record<string, unknown>;
+  const turnstileToken = requiredString(proof.turnstileToken, 2_048);
+  const formStartedAt = requiredString(proof.formStartedAt, 40);
+  const website = typeof proof.website === "string" && proof.website.length <= 200
+    ? proof.website
+    : null;
+  if (!turnstileToken || !formStartedAt || !Number.isFinite(Date.parse(formStartedAt)) || website === null) {
+    return null;
+  }
+  return { turnstileToken, formStartedAt, website, networkFingerprint: null };
+}
+
+function networkFingerprint(request: Request, secret: string): string | null {
+  const forwarded = request.headers.get("x-vercel-forwarded-for") ??
+    (process.env.NODE_ENV !== "production" ? request.headers.get("x-forwarded-for") : null);
+  const address = forwarded?.split(",", 1)[0]?.trim();
+  if (!address || address.length > 128) return null;
+  return createHmac("sha256", secret)
+    .update(`membership-network-v1:${address}`)
+    .digest("hex");
 }
 
 function isAdultDateOfBirth(value: string): boolean {
@@ -79,7 +111,9 @@ function parseSubmission(value: unknown): SubmissionBody | null {
   const communications = application?.communications as Record<string, unknown> | undefined;
   const sms = communications?.sms as Record<string, unknown> | undefined;
   const mailingAddress = applicant?.mailingAddress as Record<string, unknown> | undefined;
+  const abuseProtection = abuseProtectionProof(application?.abuseProtection);
   if (!application || !applicant || !mailingAddress || !fireService || !foolsHistory || !attestations || !sms) return null;
+  if (abuseProtection === null) return null;
   if (Object.hasOwn(application, "payment")) return null;
 
   const submissionId = requiredString(root.submissionId, 36);
@@ -156,12 +190,14 @@ function parseSubmission(value: unknown): SubmissionBody | null {
           disclosureVersion: siteConfig.membership.smsConsent.version,
         },
       },
+      ...(abuseProtection ? { abuseProtection } : {}),
     },
   };
 }
 
 function publicError(status: number) {
   if (status === 400) return { status: 400, code: "VALIDATION_FAILED" };
+  if (status === 403) return { status: 403, code: "BOT_CHECK_FAILED" };
   if (status === 409) return { status: 409, code: "SUBMISSION_CONFLICT" };
   if (status === 429) return { status: 429, code: "RATE_LIMITED" };
   return { status: 503, code: "INTAKE_UNAVAILABLE" };
@@ -196,16 +232,25 @@ export async function POST(request: Request) {
       .find((part) => part.startsWith(`${CONNECTION_COOKIE}=`))
       ?.slice(CONNECTION_COOKIE.length + 1);
     const connection = readConnection(connectionCookie, secret);
-    const application: ApplicationPayload = connection
+    const protectedApplication: ApplicationPayload = submission.application.abuseProtection
       ? {
           ...submission.application,
+          abuseProtection: {
+            ...submission.application.abuseProtection,
+            networkFingerprint: networkFingerprint(request, secret),
+          },
+        }
+      : submission.application;
+    const application: ApplicationPayload = connection
+      ? {
+          ...protectedApplication,
           applicant: {
-            ...submission.application.applicant,
+            ...protectedApplication.applicant,
             email: connection.verifiedEmail,
           },
           accountConnection: { receipt: connection.receipt },
         }
-      : submission.application;
+      : protectedApplication;
     const rawBody = JSON.stringify(application);
     const response = await fetch(endpoint, {
       method: "POST",

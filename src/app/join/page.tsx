@@ -52,8 +52,11 @@ export default async function JoinPage({
     : null;
   let initialConnection = null;
   const programConfig = await membershipProgramConfiguration();
+  const abuseProtectionReady = !programConfig?.abuseProtection?.required || Boolean(
+    programConfig.abuseProtection.enabled && programConfig.abuseProtection.siteKey,
+  );
   const applicationReady = Boolean(
-    programConfig?.program.enabledApplicationTypes.includes("new"),
+    programConfig?.program.enabledApplicationTypes.includes("new") && abuseProtectionReady,
   );
   const membershipCurrency = programConfig?.program.currency ?? "USD";
   const formatMembershipPrice = (amountMinor: number) =>

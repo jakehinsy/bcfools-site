@@ -48,6 +48,14 @@ export type MembershipProgramConfig = {
     locationId?: string;
     annualRenewalReady?: boolean;
   };
+  abuseProtection?: {
+    enabled: boolean;
+    required: boolean;
+    provider: "turnstile";
+    siteKey: string | null;
+    action: string;
+    minimumFormAgeSeconds: number;
+  };
 };
 
 const PROGRAM_KEY_PATTERN = /^mpk_[A-Za-z0-9_-]{12,80}$/;
@@ -143,7 +151,15 @@ export async function membershipProgramConfiguration(): Promise<MembershipProgra
       typeof result.program.requiresDateOfBirth !== "boolean" ||
       typeof result.program.requiresMailingAddress !== "boolean" ||
       !/^[A-Z]{2}$/.test(result.program.defaultCountryCode) ||
-      !/^[A-Z]{3}$/.test(result.program.currency)
+      !/^[A-Z]{3}$/.test(result.program.currency) ||
+      (result.abuseProtection !== undefined && (
+        typeof result.abuseProtection.enabled !== "boolean" ||
+        typeof result.abuseProtection.required !== "boolean" ||
+        result.abuseProtection.provider !== "turnstile" ||
+        (result.abuseProtection.siteKey !== null && typeof result.abuseProtection.siteKey !== "string") ||
+        result.abuseProtection.action !== "membership_application" ||
+        !Number.isFinite(result.abuseProtection.minimumFormAgeSeconds)
+      ))
     ) return null;
     return result;
   } catch {
