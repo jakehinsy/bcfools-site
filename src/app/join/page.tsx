@@ -127,7 +127,7 @@ export default async function JoinPage({
               {applicationReady ? (
                 <>
                   <p className={styles.eyebrow}>How it works</p>
-                  <h2>Simple, secure, and reviewed by the chapter.</h2>
+                  <h2>{localPaid ? "Simple, secure registration and checkout." : "Simple, secure, and reviewed by the chapter."}</h2>
                   <ol>
                     <li>
                       <span>01</span>
@@ -139,7 +139,7 @@ export default async function JoinPage({
                     <li>
                       <span>02</span>
                       <div>
-                        <strong>Chapter review</strong>
+                        <strong>{localPaid ? "Confirm payment" : "Chapter review"}</strong>
                         <p>{localPaid ? "Your registration and payment status appear on the next page." : "The Membership Trustee and President review every new application."}</p>
                       </div>
                     </li>
@@ -203,6 +203,7 @@ export default async function JoinPage({
                     platoonSignInAvailable={Boolean(platoonConnectionOrigin)}
                     programConfig={programConfig}
                     localPaid={localPaid}
+                    hostedAcceptance={hostedAcceptance}
                     renewalAvailable={!localPaid && !hostedAcceptance}
                     renewalUrl={renewalUrl}
                   />

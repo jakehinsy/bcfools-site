@@ -75,6 +75,7 @@ export function MembershipApplicationForm({
   platoonSignInAvailable,
   programConfig,
   localPaid,
+  hostedAcceptance,
   renewalAvailable,
   renewalUrl,
 }: {
@@ -85,6 +86,7 @@ export function MembershipApplicationForm({
   platoonSignInAvailable: boolean;
   programConfig: MembershipProgramConfig | null;
   localPaid: boolean;
+  hostedAcceptance: boolean;
   renewalAvailable: boolean;
   renewalUrl: string;
 }) {
@@ -615,7 +617,10 @@ export function MembershipApplicationForm({
       <div className={styles.paymentNotice} role="note">
         <strong>{localPaid ? "One-time chapter registration" : "What happens after you apply"}</strong>
         <p>
-          {localPaid ? `Local registration uses a synthetic @example.test email. The $75 one-time payment covers membership through ${programConfig?.paidRegistration?.paidThrough}. After submitting, continue to secure checkout. Your account will show any outstanding amount until payment is confirmed.` : <>No payment is collected with this application. Watch your email for
+          {localPaid ? hostedAcceptance
+            ? `This temporary acceptance registration is for approved test recipients. The one-time $75 payment covers membership through ${programConfig?.paidRegistration?.paidThrough}. After submitting, continue to secure sandbox checkout.`
+            : `Local registration uses a synthetic @example.test email. The $75 one-time payment covers membership through ${programConfig?.paidRegistration?.paidThrough}. After submitting, continue to secure checkout. Your account will show any outstanding amount until payment is confirmed.`
+            : <>No payment is collected with this application. Watch your email for
           the chapter&apos;s decision and, if approved, secure instructions for your
           Platoon account. The chapter will provide
           dues instructions after approval and completed Platoon onboarding.</>}
