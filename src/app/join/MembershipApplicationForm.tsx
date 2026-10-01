@@ -75,6 +75,7 @@ export function MembershipApplicationForm({
   platoonSignInAvailable,
   programConfig,
   localPaid,
+  renewalAvailable,
   renewalUrl,
 }: {
   connectionSupportReference: string | null;
@@ -84,6 +85,7 @@ export function MembershipApplicationForm({
   platoonSignInAvailable: boolean;
   programConfig: MembershipProgramConfig | null;
   localPaid: boolean;
+  renewalAvailable: boolean;
   renewalUrl: string;
 }) {
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
@@ -634,7 +636,7 @@ export function MembershipApplicationForm({
             <b>{formatMoney(newMemberAmountMinor, currency)}</b>
           </div>
 
-          {!localPaid ? <Link className={`${styles.typeCard} ${styles.typeCardLink}`} href={renewalUrl}>
+          {renewalAvailable ? <Link className={`${styles.typeCard} ${styles.typeCardLink}`} href={renewalUrl}>
             <span>
               <strong>Annual renewal</strong>
               <small>Sign in to your Platoon account</small>

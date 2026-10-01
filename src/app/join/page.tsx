@@ -38,11 +38,12 @@ export default async function JoinPage({
   }>;
 }) {
   const params = await searchParams;
+  const hostedAcceptance = process.env.BREW_MEMBERSHIP_PAID_ACCEPTANCE === "true";
   const headerStore = await headers();
-  const paidProtocol = process.env.BREW_MEMBERSHIP_PAID_ACCEPTANCE === "true" ? "https" : "http";
+  const paidProtocol = hostedAcceptance ? "https" : "http";
   const localPaid = localPaidRegistrationEnabled(`${paidProtocol}://${headerStore.get("host") ?? ""}`);
-  const renewalUrl = membershipManagementUrl(siteConfig.links.renewal);
-  if (params.type === "renewal") redirect(renewalUrl);
+  const renewalUrl = hostedAcceptance ? "" : membershipManagementUrl(siteConfig.links.renewal);
+  if (params.type === "renewal" && !hostedAcceptance) redirect(renewalUrl);
   const connectionStatus =
     params.platoon === "connected" ||
     params.platoon === "error" ||
@@ -104,17 +105,17 @@ export default async function JoinPage({
             <h1>Pull up a chair.</h1>
             <div className={styles.heroIntro}>
               <p>
-                Whether you are joining for the first time or renewing for
-                another year, you are helping keep good training, strong
-                friendships, and the traditions of the job moving forward.
+                {hostedAcceptance
+                  ? "Join the Brew City chapter and help keep good training, strong friendships, and the traditions of the job moving forward."
+                  : "Whether you are joining for the first time or renewing for another year, you are helping keep good training, strong friendships, and the traditions of the job moving forward."}
               </p>
               <div className={styles.heroPrices} aria-label="Membership prices">
                 <span>
                   New member <strong>{formatMembershipPrice(localPaid ? 7500 : programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100)}</strong>
                 </span>
-                <span>
+                {!hostedAcceptance ? <span>
                   {localPaid ? "Paid through" : "Annual renewal"} <strong>{localPaid ? programConfig?.paidRegistration?.paidThrough : formatMembershipPrice(programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100)}</strong>
-                </span>
+                </span> : null}
               </div>
             </div>
           </div>
@@ -163,13 +164,13 @@ export default async function JoinPage({
                         <p>Introduce yourself, tell us about your fire-service experience, and join the chapter.</p>
                       </div>
                     </li>
-                    <li>
+                    {!hostedAcceptance ? <li>
                       <span>02</span>
                       <div>
                         <strong>Returning members</strong>
                         <p>Renew your annual chapter membership and keep your record current.</p>
                       </div>
-                    </li>
+                    </li> : null}
                     <li>
                       <span>03</span>
                       <div>
@@ -183,6 +184,10 @@ export default async function JoinPage({
             </aside>
 
             <div className={styles.formPanel}>
+              {hostedAcceptance && params.type === "renewal" ? <div role="status" className={styles.applicationFallback}>
+                <h2>Renewals are unavailable here.</h2>
+                <p>This temporary site supports new membership applications only. Please contact the membership team for renewal help.</p>
+              </div> : null}
               {applicationReady ? (
                 <>
                   <div className={styles.formHeading}>
@@ -198,6 +203,7 @@ export default async function JoinPage({
                     platoonSignInAvailable={Boolean(platoonConnectionOrigin)}
                     programConfig={programConfig}
                     localPaid={localPaid}
+                    renewalAvailable={!localPaid && !hostedAcceptance}
                     renewalUrl={renewalUrl}
                   />
                 </>

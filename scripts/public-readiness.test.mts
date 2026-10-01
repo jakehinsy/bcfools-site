@@ -73,7 +73,9 @@ test("renewals leave the public application and require a Platoon member account
   assert.match(config, /renewal: "https:\/\/app\.platoonapp\.com\/account\/membership"/);
   assert.match(home, /href=\{siteConfig\.links\.renewal\}/);
   assert.match(joinPage, /membershipManagementUrl\(siteConfig\.links\.renewal\)/);
-  assert.match(joinPage, /params\.type === "renewal"\) redirect\(renewalUrl\)/);
+  assert.match(joinPage, /params\.type === "renewal" && !hostedAcceptance\) redirect\(renewalUrl\)/);
+  assert.match(joinPage, /Renewals are unavailable here\./);
+  assert.match(form, /renewalAvailable \? <Link/);
   assert.doesNotMatch(form, /value="renewal"/);
   assert.match(form, /Sign in to your Platoon account/);
   assert.doesNotMatch(config, /shop\/membership-renewal|account\/membership\/renew/);

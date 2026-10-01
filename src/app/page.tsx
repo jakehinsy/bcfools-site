@@ -322,12 +322,12 @@ export default async function Home() {
               >
                 Join Brew City <ArrowIcon />
               </a>
-              <a
+              {process.env.BREW_MEMBERSHIP_PAID_ACCEPTANCE !== "true" ? <a
                 className="button button--outline"
                 href={siteConfig.links.renewal}
               >
                 Renew membership
-              </a>
+              </a> : null}
             </div>
           </div>
         </section>
