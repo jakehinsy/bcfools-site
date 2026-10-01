@@ -1,6 +1,7 @@
 import "server-only";
 
 import { APPLICATION_SCHEMA_VERSION } from "./membershipApplicationContract";
+import { isLoopbackHostname } from "./localPaidGate";
 
 import {
   createHash,
@@ -17,11 +18,20 @@ import type { StoredPlatoonConnection } from "./platoonConnectionCookie";
 export { readConnection, storeConnection } from "./platoonConnectionCookie";
 
 export { APPLICATION_SCHEMA_VERSION };
+export { localPaidRegistrationEnabled } from "./localPaidGate";
 export const APPLICATION_SIGNATURE_PATH = "/api/public/membership-applications";
 export const CONNECTION_EXCHANGE_PATH = "/api/public/membership-connections/exchange";
 export const CONNECTION_COOKIE = "bcf_platoon_connection";
 
 export type MembershipProgramConfig = {
+  paidRegistration?: {
+    amountMinor: number;
+    currency: "USD";
+    paidThrough: string;
+    oneTime: true;
+    available: boolean;
+    policyRevision: number;
+  };
   program: {
     formSchemaVersion: string;
     chapterName: string | null;
@@ -73,10 +83,6 @@ function requiredEnvironment(name: string): string {
   return value;
 }
 
-function isLoopbackHostname(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
-}
-
 function secureEndpointProtocol(endpoint: URL): boolean {
   const localHttp = process.env.NODE_ENV !== "production" &&
     endpoint.protocol === "http:" &&
@@ -118,15 +124,15 @@ export function intakeConfiguration() {
   return { endpoint, programKeyId, secret, bypassSecret };
 }
 
-export async function membershipProgramConfiguration(): Promise<MembershipProgramConfig | null> {
+export async function membershipProgramConfiguration(localPaid = false): Promise<MembershipProgramConfig | null> {
   try {
     const intake = intakeConfiguration();
-    const programHandle = requiredEnvironment("PLATOON_MEMBERSHIP_PROGRAM_HANDLE");
-    if (!PROGRAM_HANDLE_PATTERN.test(programHandle)) {
+    const programHandle = localPaid ? "" : requiredEnvironment("PLATOON_MEMBERSHIP_PROGRAM_HANDLE");
+    if (!localPaid && !PROGRAM_HANDLE_PATTERN.test(programHandle)) {
       throw new Error("Platoon membership program handle is invalid.");
     }
-    const endpoint = new URL("/api/public/membership-program-config", intake.endpoint.origin);
-    endpoint.searchParams.set("handle", programHandle);
+    const endpoint = new URL(localPaid ? "/api/local/membership-registration-policy" : "/api/public/membership-program-config", intake.endpoint.origin);
+    if (!localPaid) endpoint.searchParams.set("handle", programHandle);
     const response = await fetch(endpoint, {
       headers: intake.bypassSecret ? { "x-vercel-protection-bypass": intake.bypassSecret } : undefined,
       cache: "no-store",
@@ -145,6 +151,14 @@ export async function membershipProgramConfiguration(): Promise<MembershipProgra
       !/^[A-Z]{2}$/.test(result.program.defaultCountryCode) ||
       !/^[A-Z]{3}$/.test(result.program.currency)
     ) return null;
+    if (localPaid && (
+      result.paidRegistration?.amountMinor !== 7500 ||
+      result.paidRegistration.currency !== "USD" ||
+      result.paidRegistration.oneTime !== true ||
+      result.paidRegistration.available !== true ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(result.paidRegistration.paidThrough) ||
+      !Number.isInteger(result.paidRegistration.policyRevision)
+    )) return null;
     return result;
   } catch {
     return null;

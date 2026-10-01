@@ -7,13 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npm run test:membership-connect && npm run test:membership-profile && npm run test:membership-application-fields && npm run test:public-events && npm run test:public-readiness && npm run test:member-login-handoff",
+    "test": "npm run test:membership-connect && npm run test:membership-profile && npm run test:membership-application-fields && npm run test:local-paid-gate && npm run test:public-events && npm run test:public-readiness && npm run test:member-login-handoff && npm run test:paid-access",
+    "test:local-paid-gate": "node --experimental-strip-types --test scripts/local-paid-gate.test.mts",
     "test:membership-connect": "node --test scripts/membership-connect-browser-binding.test.mjs",
     "test:membership-profile": "node --experimental-strip-types --test scripts/membership-profile-prefill.test.mts",
     "test:membership-application-fields": "node --experimental-strip-types --test scripts/membership-application-fields.test.mts",
     "test:public-events": "node --experimental-strip-types --test scripts/public-events.test.mts",
     "test:public-readiness": "node --experimental-strip-types --test scripts/public-readiness.test.mts",
-    "test:member-login-handoff": "node --experimental-strip-types --test scripts/member-login-handoff.test.mts"
+    "test:member-login-handoff": "node --experimental-strip-types --test scripts/member-login-handoff.test.mts",
+    "test:paid-access": "node --experimental-strip-types --test scripts/paid-registration-access.test.mts"
   },
   "dependencies": {
     "next": "16.3.4",

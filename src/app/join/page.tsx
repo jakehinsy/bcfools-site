@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { siteConfig } from "@/config/site";
 import {
   CONNECTION_COOKIE,
@@ -10,6 +10,7 @@ import {
   connectionSummary,
   membershipManagementUrl,
   membershipProgramConfiguration,
+  localPaidRegistrationEnabled,
   programCredentials,
   readConnection,
 } from "@/lib/platoonMembership";
@@ -36,6 +37,8 @@ export default async function JoinPage({
   }>;
 }) {
   const params = await searchParams;
+  const headerStore = await headers();
+  const localPaid = localPaidRegistrationEnabled(`http://${headerStore.get("host") ?? ""}`);
   const renewalUrl = membershipManagementUrl(siteConfig.links.renewal);
   if (params.type === "renewal") redirect(renewalUrl);
   const connectionStatus =
@@ -51,15 +54,15 @@ export default async function JoinPage({
     ? rawConnectionSupportReference
     : null;
   let initialConnection = null;
-  const programConfig = await membershipProgramConfiguration();
+  const programConfig = await membershipProgramConfiguration(localPaid);
   const applicationReady = Boolean(
-    programConfig?.program.enabledApplicationTypes.includes("new"),
+    programConfig?.program.enabledApplicationTypes.includes("new") && (!localPaid || programConfig.paidRegistration?.available),
   );
-  const membershipCurrency = programConfig?.program.currency ?? "USD";
+  const membershipCurrency = localPaid ? "USD" : programConfig?.program.currency ?? "USD";
   const formatMembershipPrice = (amountMinor: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: membershipCurrency }).format(amountMinor / 100);
   let platoonConnectionOrigin: string | null = null;
-  try {
+  if (!localPaid) try {
     const cookieStore = await cookies();
     const connection = readConnection(
       cookieStore.get(CONNECTION_COOKIE)?.value,
@@ -69,7 +72,7 @@ export default async function JoinPage({
   } catch {
     initialConnection = null;
   }
-  try {
+  if (!localPaid) try {
     platoonConnectionOrigin = connectionConfiguration().returnUrl.origin;
   } catch {
     platoonConnectionOrigin = null;
@@ -105,10 +108,10 @@ export default async function JoinPage({
               </p>
               <div className={styles.heroPrices} aria-label="Membership prices">
                 <span>
-                  New member <strong>{formatMembershipPrice(programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100)}</strong>
+                  New member <strong>{formatMembershipPrice(localPaid ? 7500 : programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100)}</strong>
                 </span>
                 <span>
-                  Annual renewal <strong>{formatMembershipPrice(programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100)}</strong>
+                  {localPaid ? "Paid through" : "Annual renewal"} <strong>{localPaid ? programConfig?.paidRegistration?.paidThrough : formatMembershipPrice(programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100)}</strong>
                 </span>
               </div>
             </div>
@@ -127,21 +130,21 @@ export default async function JoinPage({
                       <span>01</span>
                       <div>
                         <strong>Apply online</strong>
-                        <p>Submit your details online. No payment is collected with the application.</p>
+                        <p>{localPaid ? "Submit your details and continue to secure checkout for a one-time $75 payment." : "Submit your details online. No payment is collected with the application."}</p>
                       </div>
                     </li>
                     <li>
                       <span>02</span>
                       <div>
                         <strong>Chapter review</strong>
-                        <p>The Membership Trustee and President review every new application.</p>
+                        <p>{localPaid ? "Your registration and payment status appear on the next page." : "The Membership Trustee and President review every new application."}</p>
                       </div>
                     </li>
                     <li>
                       <span>03</span>
                       <div>
                         <strong>Continue by email</strong>
-                        <p>If approved, follow the secure email instructions to claim or sign in to your Platoon account. The chapter will provide dues instructions after you complete onboarding.</p>
+                        <p>{localPaid ? "Use the secure link from email to resume registration or connect your account." : "If approved, follow the secure email instructions to claim or sign in to your Platoon account. The chapter will provide dues instructions after you complete onboarding."}</p>
                       </div>
                     </li>
                   </ol>
@@ -192,6 +195,7 @@ export default async function JoinPage({
                     platoonConnectionOrigin={platoonConnectionOrigin}
                     platoonSignInAvailable={Boolean(platoonConnectionOrigin)}
                     programConfig={programConfig}
+                    localPaid={localPaid}
                     renewalUrl={renewalUrl}
                   />
                 </>

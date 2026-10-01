@@ -70,6 +70,7 @@ export function MembershipApplicationForm({
   platoonConnectionOrigin,
   platoonSignInAvailable,
   programConfig,
+  localPaid,
   renewalUrl,
 }: {
   connectionSupportReference: string | null;
@@ -78,6 +79,7 @@ export function MembershipApplicationForm({
   platoonConnectionOrigin: string | null;
   platoonSignInAvailable: boolean;
   programConfig: MembershipProgramConfig | null;
+  localPaid: boolean;
   renewalUrl: string;
 }) {
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
@@ -85,11 +87,52 @@ export function MembershipApplicationForm({
   const submissionId = useRef<string | null>(null);
   const initialValues = membershipFormDefaults(initialConnection);
 
-  const newMemberAmountMinor = programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100;
+  const newMemberAmountMinor = localPaid ? 7500 : programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100;
   const renewalAmountMinor = programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100;
   const currency = programConfig?.program.currency ?? "USD";
+  const pendingKey = "bcf_local_membership_submission_v1";
 
   useEffect(() => {
+    if (!localPaid) return;
+    const pending = localStorage.getItem(pendingKey);
+    try {
+      const parsed = pending ? JSON.parse(pending) as { submissionId?: unknown } : null;
+      if (!pending || typeof parsed?.submissionId === "string") {
+        if (typeof parsed?.submissionId === "string") submissionId.current = parsed.submissionId;
+        setSubmission({ status: "submitting" });
+        void (async () => {
+          try {
+            const existing = await fetch("/api/local/membership-registration-continuation", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "status" }), cache: "no-store",
+            });
+            if (existing.ok) {
+              localStorage.removeItem(pendingKey);
+              window.location.assign("/join/registration");
+              return;
+            }
+            if (existing.status !== 401) throw new Error();
+            if (!pending) {
+              setSubmission({ status: "idle" });
+              return;
+            }
+            const response = await fetch("/api/local/membership-registrations", {
+              method: "POST", headers: { "Content-Type": "application/json" }, body: pending,
+            });
+            const result = await response.json() as { registration?: { registrationId?: string } };
+            if (!response.ok || !result.registration?.registrationId) throw new Error();
+            localStorage.removeItem(pendingKey);
+            window.location.assign("/join/registration");
+          } catch {
+            setSubmission({ status: "error", message: "Your earlier submission could not be confirmed. Retry the same attempt when the service is available." });
+          }
+        })();
+      }
+    } catch { if (pending) localStorage.removeItem(pendingKey); }
+  }, [localPaid]);
+
+  useEffect(() => {
+    if (localPaid) return;
     if (window.location.hash.startsWith(CONNECTION_HANDOFF_PREFIX)) {
       const encoded = window.location.hash.slice(CONNECTION_HANDOFF_PREFIX.length);
       const browserBinding = sessionStorage.getItem(CONNECTION_BINDING_STORAGE_KEY) ?? "";
@@ -149,7 +192,7 @@ export function MembershipApplicationForm({
       sessionStorage.removeItem(CONNECTION_BINDING_STORAGE_KEY);
       window.location.assign("/join?platoon=unavailable&type=new#application");
     });
-  }, [platoonConnectionOrigin]);
+  }, [platoonConnectionOrigin, localPaid]);
 
   async function handlePlatoonSignIn(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -177,6 +220,7 @@ export function MembershipApplicationForm({
   }
 
   function resetAttempt() {
+    if (localPaid && localStorage.getItem(pendingKey)) return;
     if (submission.status !== "submitting") {
       submissionId.current = null;
       setSubmission({ status: "idle" });
@@ -187,15 +231,13 @@ export function MembershipApplicationForm({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const pending = localPaid ? localStorage.getItem(pendingKey) : null;
     const currentSubmissionId = submissionId.current ?? crypto.randomUUID();
     submissionId.current = currentSubmissionId;
     setSubmission({ status: "submitting" });
 
     try {
-      const response = await fetch("/api/membership-applications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const payload = pending ? JSON.parse(pending) : {
           submissionId: currentSubmissionId,
           application: {
             schemaVersion: APPLICATION_SCHEMA_VERSION,
@@ -237,7 +279,27 @@ export function MembershipApplicationForm({
               },
             },
           },
-        }),
+        };
+      if (localPaid && !pending) localStorage.setItem(pendingKey, JSON.stringify(payload));
+      if (localPaid) {
+        const existing = await fetch("/api/local/membership-registration-continuation", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "status" }), cache: "no-store",
+        });
+        if (existing.ok) {
+          localStorage.removeItem(pendingKey);
+          window.location.assign("/join/registration");
+          return;
+        }
+        if (existing.status !== 401) {
+          setSubmission({ status: "error", message: "We could not check your existing registration. Try again shortly." });
+          return;
+        }
+      }
+      const response = await fetch(localPaid ? "/api/local/membership-registrations" : "/api/membership-applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
       const result = (await response.json()) as {
         applicationReference?: string;
@@ -246,7 +308,20 @@ export function MembershipApplicationForm({
         nextAction?: "await_review";
         replayed?: boolean;
         error?: { code?: string };
+        registration?: { registrationId?: string };
       };
+
+      if (localPaid) {
+        if (response.ok && result.registration?.registrationId && result.applicationReference) {
+          localStorage.removeItem(pendingKey);
+          window.location.assign("/join/registration");
+          return;
+        }
+        setSubmission({ status: "error", message: result.error?.code === "VALIDATION_FAILED"
+          ? "Please review your details. If you change them, start a new application."
+          : "We could not confirm this registration. Resume the same attempt to check again." });
+        return;
+      }
 
       if (
         !response.ok ||
@@ -274,7 +349,7 @@ export function MembershipApplicationForm({
       });
       form.reset();
     } catch {
-      submissionId.current = null;
+      if (!localPaid) submissionId.current = null;
       setSubmission({
         status: "error",
         message: "We couldn’t reach the application service. Please check your connection and try again.",
@@ -284,7 +359,7 @@ export function MembershipApplicationForm({
 
   return (
     <>
-      {initialConnection || platoonSignInAvailable || connectionStatus ? (
+      {!localPaid && (initialConnection || platoonSignInAvailable || connectionStatus) ? (
         <section className={styles.platoonConnection} aria-labelledby="platoon-connection-title">
           {initialConnection ? (
             <div className={styles.connectionConfirmed}>
@@ -335,12 +410,12 @@ export function MembershipApplicationForm({
 
       <form className={styles.form} onChange={resetAttempt} onSubmit={handleSubmit}>
       <div className={styles.paymentNotice} role="note">
-        <strong>What happens after you apply</strong>
+        <strong>{localPaid ? "One-time chapter registration" : "What happens after you apply"}</strong>
         <p>
-          No payment is collected with this application. Watch your email for
+          {localPaid ? `Local registration uses a synthetic @example.test email. The $75 one-time payment covers membership through ${programConfig?.paidRegistration?.paidThrough}. After submitting, continue to secure checkout. Your account will show any outstanding amount until payment is confirmed.` : <>No payment is collected with this application. Watch your email for
           the chapter&apos;s decision and, if approved, secure instructions for your
           Platoon account. The chapter will provide
-          dues instructions after approval and completed Platoon onboarding.
+          dues instructions after approval and completed Platoon onboarding.</>}
         </p>
       </div>
 
@@ -358,13 +433,13 @@ export function MembershipApplicationForm({
             <b>{formatMoney(newMemberAmountMinor, currency)}</b>
           </div>
 
-          <Link className={`${styles.typeCard} ${styles.typeCardLink}`} href={renewalUrl}>
+          {!localPaid ? <Link className={`${styles.typeCard} ${styles.typeCardLink}`} href={renewalUrl}>
             <span>
               <strong>Annual renewal</strong>
               <small>Sign in to your Platoon account</small>
             </span>
             <b>{formatMoney(renewalAmountMinor, currency)}</b>
-          </Link>
+          </Link> : null}
         </div>
       </fieldset>
 
@@ -549,10 +624,10 @@ export function MembershipApplicationForm({
         type="submit"
       >
         {submission.status === "submitting"
-          ? "Sending application…"
+          ? (localPaid ? "Starting registration…" : "Sending application…")
           : submission.status === "success"
             ? "Application sent"
-            : "Submit for chapter review"}
+            : (localPaid ? "Continue to registration" : "Submit for chapter review")}
       </button>
 
       {submission.status === "success" ? (
