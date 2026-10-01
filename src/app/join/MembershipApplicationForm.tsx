@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { APPLICATION_SCHEMA_VERSION } from "@/lib/membershipApplicationContract";
@@ -20,7 +20,7 @@ type SubmissionState =
       nextAction: "await_review";
     }
   | { status: "error"; message: string };
-type PaidAccount = { connected: true; verified: true; maskedEmail: string };
+type PaidAccount = { connected: true; verified: boolean; maskedEmail: string | null };
 
 const stateOptions = [
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA",
@@ -92,8 +92,12 @@ export function MembershipApplicationForm({
   const [paidAccountChecking, setPaidAccountChecking] = useState(localPaid);
   const [paidAccountBusy, setPaidAccountBusy] = useState(false);
   const [paidAccountMessage, setPaidAccountMessage] = useState("");
+  const [formHydrated, setFormHydrated] = useState(false);
   const submissionId = useRef<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const serverJourneyDraft = useRef<ReturnType<typeof parseLocalPaidDraft>>(null);
+  const formEditedSinceMount = useRef(false);
+  const accountReturnContext = useRef<{ returnCode: string | null; probeReturned: boolean } | null>(null);
   const accountGeneration = useRef(0);
   const manualAccountNavigation = useRef(false);
   const initialValues = membershipFormDefaults(initialConnection);
@@ -103,6 +107,8 @@ export function MembershipApplicationForm({
   const currency = programConfig?.program.currency ?? "USD";
   const pendingKey = "bcf_local_membership_submission_v1";
 
+  useEffect(() => { setFormHydrated(true); }, []);
+
   useEffect(() => {
     if (!localPaid || !formRef.current) return;
     try {
@@ -110,6 +116,18 @@ export function MembershipApplicationForm({
       if (draft) restoreLocalPaidDraft(formRef.current, draft);
     } catch { /* Server journey draft can still restore nonrestricted fields. */ }
   }, [localPaid]);
+
+  // The account result changes the form's React tree after the first draft
+  // restore. Reapply the saved values after that commit if the visitor has not
+  // edited the returned form. A same-tab draft retains fields omitted from the
+  // server journey draft; a different tab can use the server draft instead.
+  useLayoutEffect(() => {
+    if (!localPaid || !paidAccount?.connected || !formRef.current || formEditedSinceMount.current) return;
+    let draft = null;
+    try { draft = parseLocalPaidDraft(sessionStorage.getItem(LOCAL_PAID_DRAFT_KEY)); }
+    catch { /* The server draft can still restore this return. */ }
+    if (draft ?? serverJourneyDraft.current) restoreLocalPaidDraft(formRef.current, draft ?? serverJourneyDraft.current!);
+  }, [localPaid, paidAccount, paidAccountChecking]);
 
   function rememberLocalPaidDraft() {
     if (!localPaid || !formRef.current) return;
@@ -120,7 +138,7 @@ export function MembershipApplicationForm({
   async function paidJourneyAction(action: "create" | "redeem" | "status" | "switch" | "bindCurrent", extra: Record<string, unknown> = {}) {
     const response = await fetch("/api/local/membership-registration-journey", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...extra }), cache: "no-store",
+      body: JSON.stringify({ action, ...extra }), cache: "no-store", signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) throw new Error("Account connection unavailable.");
     return response.json() as Promise<{ signInUrl?: string; preflightUrl?: string; account?: PaidAccount | { connected: false }; draft?: unknown }>;
@@ -129,31 +147,34 @@ export function MembershipApplicationForm({
   useEffect(() => {
     if (!localPaid) return;
     const generation = accountGeneration.current;
-    const query = new URLSearchParams(window.location.search);
-    const returnCode = query.get("account_return");
-    const probeReturned = query.get("account_probe") === "none";
-    if (returnCode !== null || probeReturned) {
-      query.delete("account_return");
-      query.delete("account_probe");
-      const cleaned = query.toString();
-      window.history.replaceState(null, "", `/join${cleaned ? `?${cleaned}` : ""}#application`);
-      try { sessionStorage.setItem(PAID_ACCOUNT_PROBE_KEY, "1"); } catch { /* Skip repeated probes if storage is unavailable. */ }
+    let cancelled = false;
+    const isCurrent = () => !cancelled && accountGeneration.current === generation;
+    if (!accountReturnContext.current) {
+      const query = new URLSearchParams(window.location.search);
+      const returnCode = query.get("account_return");
+      const probeReturned = query.get("account_probe") === "none";
+      accountReturnContext.current = { returnCode, probeReturned };
+      if (returnCode !== null || probeReturned) {
+        query.delete("account_return");
+        query.delete("account_probe");
+        const cleaned = query.toString();
+        window.history.replaceState(null, "", `/join${cleaned ? `?${cleaned}` : ""}#application`);
+        try { sessionStorage.setItem(PAID_ACCOUNT_PROBE_KEY, "1"); } catch { /* Skip repeated probes if storage is unavailable. */ }
+      }
     }
-    void (async () => {
+    const { returnCode, probeReturned } = accountReturnContext.current;
+    // StrictMode cancels the first scheduled task during its effect replay.
+    // Only the active task may consume a one-time return code or start a probe.
+    const startTimer = window.setTimeout(() => { if (!isCurrent()) return; void (async () => {
       let leavingForProbe = false;
       try {
         const result = returnCode
           ? await paidJourneyAction("redeem", { returnCode })
           : await paidJourneyAction("status");
-        if (accountGeneration.current !== generation) return;
-        if (result.account?.connected === true && result.account.verified === true) {
+        if (!isCurrent()) return;
+        if (result.account?.connected === true && typeof result.account.verified === "boolean") {
+          if (returnCode) serverJourneyDraft.current = parseLocalPaidDraft(JSON.stringify(result.draft ?? null));
           setPaidAccount(result.account);
-          let hasSameTabDraft = false;
-          try { hasSameTabDraft = Boolean(sessionStorage.getItem(LOCAL_PAID_DRAFT_KEY)); } catch { /* Use server draft. */ }
-          if (returnCode && formRef.current && !hasSameTabDraft) {
-            const serverDraft = parseLocalPaidDraft(JSON.stringify(result.draft ?? null));
-            if (serverDraft) restoreLocalPaidDraft(formRef.current, serverDraft);
-          }
         } else if (returnCode) {
           setPaidAccountMessage("That account could not be connected. You can try again or continue the application.");
         } else if (!probeReturned && !manualAccountNavigation.current) {
@@ -162,17 +183,18 @@ export function MembershipApplicationForm({
             probeAvailable = sessionStorage.getItem(PAID_ACCOUNT_PROBE_KEY) !== "1";
             if (probeAvailable) sessionStorage.setItem(PAID_ACCOUNT_PROBE_KEY, "1");
           } catch { /* Do not risk a redirect loop without tab storage. */ }
-          if (probeAvailable && accountGeneration.current === generation) {
+          if (probeAvailable && isCurrent()) {
             // A resumed registration takes priority over first-visit account discovery.
             let pendingRegistration = false;
             try { pendingRegistration = Boolean(localStorage.getItem(pendingKey)); } catch { /* Existing status is checked below. */ }
             if (pendingRegistration) return;
             const registrationStatus = await fetch("/api/local/membership-registration-continuation", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "status" }), cache: "no-store",
+              body: JSON.stringify({ action: "status" }), cache: "no-store", signal: AbortSignal.timeout(15_000),
             });
+            if (!isCurrent()) return;
             if (registrationStatus.ok) {
-              if (accountGeneration.current === generation) window.location.assign("/join/registration");
+              window.location.assign("/join/registration");
               return;
             }
             if (registrationStatus.status !== 401) return;
@@ -180,17 +202,19 @@ export function MembershipApplicationForm({
             const created = await paidJourneyAction("create", {
               draft: formRef.current ? safeJourneyDraft(collectLocalPaidDraft(formRef.current)) : {},
             });
-            if (accountGeneration.current !== generation || manualAccountNavigation.current || !created.preflightUrl) return;
+            if (!isCurrent() || manualAccountNavigation.current || !created.preflightUrl) return;
             leavingForProbe = true;
             window.location.assign(created.preflightUrl);
           }
         }
       } catch {
-        if (accountGeneration.current === generation) setPaidAccountMessage("Account sign-in is unavailable. You can still complete the application.");
+        leavingForProbe = false;
+        if (isCurrent()) setPaidAccountMessage("Account sign-in is unavailable. You can still complete the application.");
       } finally {
-        if (accountGeneration.current === generation && !leavingForProbe) setPaidAccountChecking(false);
+        if (isCurrent() && !leavingForProbe) setPaidAccountChecking(false);
       }
-    })();
+    })(); }, 0);
+    return () => { cancelled = true; window.clearTimeout(startTimer); };
   }, [localPaid]);
 
   async function handlePaidSignIn() {
@@ -511,7 +535,9 @@ export function MembershipApplicationForm({
               <span aria-hidden="true">&#10003;</span>
               <div>
                 <strong id="paid-account-title">Platoon account signed in</strong>
-                <p>Verified account: {paidAccount.maskedEmail}. Use the same email in your application for automatic account connection after payment.</p>
+                {paidAccount.verified
+                  ? <p>{paidAccount.maskedEmail ? `Verified account: ${paidAccount.maskedEmail}. ` : "Account email verified. "}Use the same email in your application for automatic account connection after payment.</p>
+                  : <p>Email verification is required to connect membership after payment. You can continue your application now.</p>}
               </div>
               <button disabled={paidAccountBusy || submission.status === "submitting"} onClick={() => void handlePaidAccountSwitch()} type="button">Change account</button>
             </div>
@@ -580,7 +606,7 @@ export function MembershipApplicationForm({
         </section>
       ) : null}
 
-      <form className={styles.form} ref={formRef} onChange={() => { rememberLocalPaidDraft(); resetAttempt(); }} onSubmit={handleSubmit}>
+      <form className={styles.form} inert={localPaid && (!formHydrated || paidAccountChecking)} ref={formRef} onChange={() => { formEditedSinceMount.current = true; rememberLocalPaidDraft(); resetAttempt(); }} onSubmit={handleSubmit}>
       <div className={styles.paymentNotice} role="note">
         <strong>{localPaid ? "One-time chapter registration" : "What happens after you apply"}</strong>
         <p>

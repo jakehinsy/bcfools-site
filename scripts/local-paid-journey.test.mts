@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { parseLocalPaidDraft } from "../src/lib/localPaidDraft.ts";
 import { safeJourneyDraft } from "../src/lib/localPaidJourneyDraft.ts";
 import { paidAutoContinuationAttemptKey } from "../src/lib/paidAutoContinuation.ts";
+import { connectedLocalPaidJourneyAccount } from "../src/lib/localPaidJourneyAccount.ts";
 
 test("same-tab application draft preserves attestations and restricted fields for sign-in return", () => {
   const draft = parseLocalPaidDraft(JSON.stringify({
@@ -36,4 +37,19 @@ test("automatic account continuation is scoped to captured paid registration and
   assert.equal(paidAutoContinuationAttemptKey({ ...paid, accountConnected: true }, 2), null);
   assert.equal(paidAutoContinuationAttemptKey({ ...paid, organizationMembershipState: "removed" }, 2), null);
   assert.equal(paidAutoContinuationAttemptKey(paid, null), null);
+});
+
+test("signed journey carries an unverified account without exposing its email", () => {
+  assert.deepEqual(connectedLocalPaidJourneyAccount({
+    connected: true, verified: false, maskedEmail: null,
+    email: "private@example.test", userId: "private-user", paid: true,
+  }), { connected: true, verified: false, maskedEmail: null });
+  assert.deepEqual(connectedLocalPaidJourneyAccount({
+    connected: true, verified: true, maskedEmail: "p***@example.test", userId: "private-user",
+  }), { connected: true, verified: true, maskedEmail: "p***@example.test" });
+  assert.equal(connectedLocalPaidJourneyAccount({
+    connected: true, verified: false, maskedEmail: "private@example.test",
+  }), null);
+  assert.equal(connectedLocalPaidJourneyAccount({ connected: true, verified: "false", maskedEmail: null }), null);
+  assert.equal(connectedLocalPaidJourneyAccount({ connected: false, verified: true, maskedEmail: null }), null);
 });

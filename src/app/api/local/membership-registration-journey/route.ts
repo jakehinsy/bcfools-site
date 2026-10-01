@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { signedProgramHeaders } from "@/lib/platoonMembership";
 import { safeJourneyDraft } from "@/lib/localPaidJourneyDraft";
+import { connectedLocalPaidJourneyAccount } from "@/lib/localPaidJourneyAccount";
 import {
   JOURNEY_COOKIE, JOURNEY_TOKEN_PATTERN, localBackend, privateError, readContinuation, readJourney,
   REGISTRATION_COOKIE, sealJourney,
@@ -81,20 +82,19 @@ export async function POST(request: NextRequest) {
       return outgoing;
     }
     if (action === "redeem") {
-      const account = result.account as Record<string, unknown> | undefined;
-      if (account?.connected !== true || account.verified !== true || typeof account.maskedEmail !== "string") return privateError();
-      const outgoing = privateJson({ account: { connected: true, verified: true, maskedEmail: account.maskedEmail }, draft: safeJourneyDraft(result.draft) });
+      const account = connectedLocalPaidJourneyAccount(result.account);
+      if (!account) return privateError();
+      const outgoing = privateJson({ account, draft: safeJourneyDraft(result.draft) });
       outgoing.cookies.set(JOURNEY_COOKIE, sealJourney(journeyToken!), {
         httpOnly: true, sameSite: "lax", secure: false, path: "/", maxAge: 60 * 60 * 24,
       });
       return outgoing;
     }
     if (action === "status") {
-      const account = result.account as Record<string, unknown> | undefined;
+      const account = connectedLocalPaidJourneyAccount(result.account);
       return privateJson({
         generation: Number.isSafeInteger(result.generation) && (result.generation as number) >= 0 ? result.generation : null,
-        account: account?.connected === true && account.verified === true && typeof account.maskedEmail === "string"
-          ? { connected: true, verified: true, maskedEmail: account.maskedEmail } : { connected: false },
+        account: account ?? { connected: false },
       });
     }
     return privateJson({ bound: result.bound === true });
