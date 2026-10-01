@@ -3,8 +3,30 @@ import {
   connectionConfiguration,
   createConnectionFlow,
 } from "@/lib/platoonMembership";
+import { isLoopbackHostname } from "@/lib/localPaidGate";
 
 export const runtime = "nodejs";
+
+function configuredReturnUrl(): URL | null {
+  try {
+    const returnUrl = new URL(process.env.PLATOON_MEMBERSHIP_RETURN_URL ?? "");
+    const localHttp = process.env.NODE_ENV !== "production" &&
+      returnUrl.protocol === "http:" && isLoopbackHostname(returnUrl.hostname);
+    if (
+      (!localHttp && returnUrl.protocol !== "https:") ||
+      returnUrl.username ||
+      returnUrl.password ||
+      returnUrl.search ||
+      returnUrl.hash ||
+      returnUrl.pathname !== "/api/platoon/connect/callback"
+    ) {
+      return null;
+    }
+    return returnUrl;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -29,7 +51,14 @@ export async function GET(request: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch {
-    const destination = new URL("/join", request.url);
+    const returnUrl = configuredReturnUrl();
+    if (!returnUrl) {
+      return NextResponse.json(
+        { error: "Membership connection is unavailable." },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    const destination = new URL("/join", returnUrl);
     destination.searchParams.set("platoon", "unavailable");
     destination.searchParams.set("type", applicationType);
     destination.hash = "application";

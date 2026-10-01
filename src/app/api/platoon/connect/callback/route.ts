@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { parsePlatoonExchangeResponse } from "@/lib/platoonConnectionPayload";
+import { isLoopbackHostname } from "@/lib/localPaidGate";
 import {
   CONNECTION_COOKIE,
   CONNECTION_EXCHANGE_PATH,
@@ -14,6 +15,27 @@ import {
 } from "@/lib/platoonMembership";
 
 export const runtime = "nodejs";
+
+function configuredReturnUrl(): URL | null {
+  try {
+    const returnUrl = new URL(process.env.PLATOON_MEMBERSHIP_RETURN_URL ?? "");
+    const localHttp = process.env.NODE_ENV !== "production" &&
+      returnUrl.protocol === "http:" && isLoopbackHostname(returnUrl.hostname);
+    if (
+      (!localHttp && returnUrl.protocol !== "https:") ||
+      returnUrl.username ||
+      returnUrl.password ||
+      returnUrl.search ||
+      returnUrl.hash ||
+      returnUrl.pathname !== "/api/platoon/connect/callback"
+    ) {
+      return null;
+    }
+    return returnUrl;
+  } catch {
+    return null;
+  }
+}
 
 function callbackDestination(
   returnUrl: URL,
@@ -68,8 +90,8 @@ function validExchangeResponse(value: unknown): PlatoonConnection | null {
   };
 }
 
-function errorRedirect(request: Request, reference: string) {
-  const destination = new URL("/join", request.url);
+function errorRedirect(returnUrl: URL, reference: string) {
+  const destination = new URL("/join", returnUrl);
   destination.searchParams.set("platoon", "error");
   destination.searchParams.set("connection_ref", reference);
   destination.hash = "application";
@@ -85,7 +107,14 @@ export async function GET(request: Request) {
     logConnectionFailure(reference, "configuration", {
       errorName: error instanceof Error ? error.name : "UnknownError",
     });
-    return NextResponse.redirect(errorRedirect(request, reference), {
+    const returnUrl = configuredReturnUrl();
+    if (!returnUrl) {
+      return NextResponse.json(
+        { error: "Membership connection is unavailable." },
+        { status: 503, headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } },
+      );
+    }
+    return NextResponse.redirect(errorRedirect(returnUrl, reference), {
       headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },
     });
   }
@@ -134,8 +163,11 @@ export async function POST(request: Request) {
     logConnectionFailure(reference, "configuration", {
       errorName: error instanceof Error ? error.name : "UnknownError",
     });
+    const returnUrl = configuredReturnUrl();
     return NextResponse.json(
-      { redirectTo: relativeDestination(errorRedirect(request, reference)) },
+      returnUrl
+        ? { redirectTo: relativeDestination(errorRedirect(returnUrl, reference)) }
+        : { error: "Membership connection is unavailable." },
       { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
