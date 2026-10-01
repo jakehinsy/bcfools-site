@@ -25,6 +25,7 @@ export const metadata: Metadata = {
   title: "Join the Chapter",
   description:
     "Apply for a new Brew City FOOLS membership or renew your annual chapter membership.",
+  referrer: "no-referrer",
 };
 
 export default async function JoinPage({

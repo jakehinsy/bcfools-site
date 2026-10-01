@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { canContinuePaidAccount } from "@/lib/paidRegistrationAccess";
+import { paidAutoContinuationAttemptKey } from "@/lib/paidAutoContinuation";
 import styles from "../join.module.css";
 
 type Status = {
@@ -94,6 +95,31 @@ export function RegistrationStatus() {
     }, 5000);
     return () => window.clearInterval(interval);
   }, [status?.registrationId, status?.captured, status?.admissionState, status?.refundedAmountMinor, status?.disputeStatus, requestAction]);
+
+  useEffect(() => {
+    if (!status || status.accountConnected || !canContinuePaidAccount(status)) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/local/membership-registration-journey", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "status" }), cache: "no-store",
+        });
+        if (!response.ok) return;
+        const journey = await response.json() as {
+          generation?: unknown;
+          account?: { connected?: unknown; verified?: unknown };
+        };
+        const attemptKey = paidAutoContinuationAttemptKey(status, journey.generation);
+        if (cancelled || journey.account?.connected !== true || journey.account.verified !== true || !attemptKey) return;
+        if (sessionStorage.getItem(attemptKey)) return;
+        sessionStorage.setItem(attemptKey, "1");
+        setMessage("Connecting your verified Platoon account…");
+        window.location.assign("/api/local/membership-registration-account?auto=1");
+      } catch { /* Manual account continuation remains available. */ }
+    })();
+    return () => { cancelled = true; };
+  }, [status?.registrationId, status?.captured, status?.admissionState, status?.accountConnected, status?.organizationMembershipState, status?.paidThrough]);
 
   async function startCheckout() {
     if (busy) return;

@@ -202,6 +202,12 @@
   padding-block: 28px;
 }
 
+.connectionChecking {
+  color: #62636d;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
 .connectionPrompt,
 .connectionConfirmed {
   align-items: center;
@@ -248,7 +254,8 @@
 }
 
 .connectionPrompt > button,
-.connectionConfirmed > a {
+.connectionConfirmed > a,
+.connectionConfirmed > button {
   align-items: center;
   display: inline-flex;
   font-size: 0.7rem;
@@ -273,10 +280,20 @@
   opacity: 0.75;
 }
 
-.connectionConfirmed > a {
+.connectionConfirmed > a,
+.connectionConfirmed > button {
+  background: none;
+  border: 0;
   color: #23643a;
+  cursor: pointer;
+  font-family: inherit;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.connectionConfirmed > button:disabled {
+  cursor: wait;
+  opacity: 0.75;
 }
 
 .connectionPrompt > span {
@@ -298,7 +315,8 @@
 }
 
 .connectionPrompt > button:focus-visible,
-.connectionConfirmed > a:focus-visible {
+.connectionConfirmed > a:focus-visible,
+.connectionConfirmed > button:focus-visible {
   outline: 3px solid #f0b323;
   outline-offset: 4px;
 }
@@ -999,6 +1017,7 @@
 
   .connectionPrompt > button,
   .connectionConfirmed > a,
+  .connectionConfirmed > button,
   .connectionPrompt > span {
     justify-self: start;
   }
