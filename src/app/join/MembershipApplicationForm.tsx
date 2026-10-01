@@ -89,6 +89,7 @@ export function MembershipApplicationForm({
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
   const [connectionStarting, setConnectionStarting] = useState(false);
   const [paidAccount, setPaidAccount] = useState<PaidAccount | null>(null);
+  const [signedInProbe, setSignedInProbe] = useState(false);
   const [paidAccountChecking, setPaidAccountChecking] = useState(localPaid);
   const [paidAccountBusy, setPaidAccountBusy] = useState(false);
   const [paidAccountMessage, setPaidAccountMessage] = useState("");
@@ -152,7 +153,9 @@ export function MembershipApplicationForm({
     if (!accountReturnContext.current) {
       const query = new URLSearchParams(window.location.search);
       const returnCode = query.get("account_return");
-      const probeReturned = query.get("account_probe") === "none";
+      const probe = query.get("account_probe");
+      const probeReturned = probe === "none" || probe === "signed_in";
+      if (probe === "signed_in") setSignedInProbe(true);
       accountReturnContext.current = { returnCode, probeReturned };
       if (returnCode !== null || probeReturned) {
         query.delete("account_return");
@@ -546,11 +549,11 @@ export function MembershipApplicationForm({
           ) : (
             <div className={styles.connectionPrompt}>
               <div>
-                <strong id="paid-account-title">Already have a Platoon account?</strong>
-                <p>Sign in now if you like. New members can complete the application without an account.</p>
+                <strong id="paid-account-title">{signedInProbe ? "Already signed in to Platoon?" : "Already have a Platoon account?"}</strong>
+                <p>{signedInProbe ? "Connect this account to your registration, or continue the application and connect after payment." : "Sign in now if you like. New members can complete the application without an account."}</p>
               </div>
               <button disabled={paidAccountBusy || submission.status === "submitting"} onClick={() => void handlePaidSignIn()} type="button">
-                {paidAccountBusy ? "Opening Platoon…" : "Sign in with Platoon"}
+                {paidAccountBusy ? "Opening Platoon…" : signedInProbe ? "Connect this Platoon account" : "Sign in with Platoon"}
               </button>
             </div>
           )}
