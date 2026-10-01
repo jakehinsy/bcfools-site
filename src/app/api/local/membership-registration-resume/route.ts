@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { localBackend, privateError, readContinuation, REGISTRATION_COOKIE, sealContinuation, TOKEN_PATTERN, UUID_PATTERN } from "@/lib/localPaidRegistration";
+import { hostedPaidRegistrationOrigins } from "@/lib/localPaidGate";
 
 export const runtime = "nodejs";
 
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
     if (verifiedStatus.registrationId !== body.registrationId) return privateError(401, "INVALID_CONTINUATION");
     const response = NextResponse.json({ ready: true },{headers:{"Cache-Control":"private, no-store","Referrer-Policy":"no-referrer"}});
     response.cookies.set(REGISTRATION_COOKIE, sealContinuation(body.registrationId, body.continuation), {
-      httpOnly: true, sameSite: "lax", secure: false, path: "/", maxAge: 60 * 60 * 24 * 30,
+      httpOnly: true, sameSite: "lax", secure: Boolean(hostedPaidRegistrationOrigins()), path: "/", maxAge: 60 * 60 * 24 * 30,
     });
     return response;
   } catch { return privateError(400, "VALIDATION_FAILED"); }

@@ -4,6 +4,7 @@ import { signedProgramHeaders } from "@/lib/platoonMembership";
 import { JOURNEY_COOKIE, localBackend, readContinuation, readJourney, REGISTRATION_COOKIE } from "@/lib/localPaidRegistration";
 
 import { canContinuePaidAccount } from "@/lib/paidRegistrationAccess";
+import { paidRegistrationMemberOriginAllowed } from "@/lib/localPaidGate";
 
 export const runtime = "nodejs";
 
@@ -73,10 +74,7 @@ function safeMemberSetupUrl(raw: unknown): URL | null {
   if (typeof raw !== "string") return null;
   try {
     const destination = new URL(raw);
-    const configuredValue = process.env.PLATOON_MEMBER_WEB_ORIGIN?.trim();
-    const configured = configuredValue ? new URL(configuredValue) : null;
-    if (destination.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(destination.hostname) || destination.port !== "3002" ||
-      (configured && (configured.protocol !== "http:" || configured.origin !== destination.origin || configured.pathname !== "/" || configured.search || configured.hash)) ||
+    if (!paidRegistrationMemberOriginAllowed(destination) ||
       !["/membership/registration", "/membership/registration/sign-in"].includes(destination.pathname) ||
       destination.hash || [...destination.searchParams.keys()].some((key) => key !== "continuation")) return null;
     const continuation = destination.searchParams.get("continuation") ?? "";

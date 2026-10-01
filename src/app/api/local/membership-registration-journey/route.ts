@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { signedProgramHeaders } from "@/lib/platoonMembership";
 import { safeJourneyDraft } from "@/lib/localPaidJourneyDraft";
 import { connectedLocalPaidJourneyAccount } from "@/lib/localPaidJourneyAccount";
+import { paidRegistrationMemberOriginAllowed, hostedPaidRegistrationOrigins } from "@/lib/localPaidGate";
 import {
   JOURNEY_COOKIE, JOURNEY_TOKEN_PATTERN, localBackend, privateError, readContinuation, readJourney,
   REGISTRATION_COOKIE, sealJourney,
@@ -19,10 +20,7 @@ function safeMemberJourneyUrl(raw: unknown, path: "/membership/registration/sign
   if (typeof raw !== "string") return null;
   try {
     const url = new URL(raw);
-    const configured = process.env.PLATOON_MEMBER_WEB_ORIGIN?.trim();
-    const memberOrigin = configured ? new URL(configured) : null;
-    if (url.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) || url.port !== "3002" ||
-      (memberOrigin && (memberOrigin.protocol !== "http:" || memberOrigin.origin !== url.origin || memberOrigin.pathname !== "/" || memberOrigin.search || memberOrigin.hash)) ||
+    if (!paidRegistrationMemberOriginAllowed(url) ||
       url.pathname !== path ||
       url.hash || !JOURNEY_TOKEN_PATTERN.test(url.searchParams.get("journey") ?? "") ||
       [...url.searchParams.keys()].some((key) => key !== "journey")) return null;
@@ -77,7 +75,7 @@ export async function POST(request: NextRequest) {
         new URL(preflightUrl).searchParams.get("journey") !== journeyToken) return privateError();
       const outgoing = privateJson({ signInUrl, preflightUrl });
       outgoing.cookies.set(JOURNEY_COOKIE, sealJourney(journeyToken!), {
-        httpOnly: true, sameSite: "lax", secure: false, path: "/", maxAge: 60 * 60 * 24,
+        httpOnly: true, sameSite: "lax", secure: Boolean(hostedPaidRegistrationOrigins()), path: "/", maxAge: 60 * 60 * 24,
       });
       return outgoing;
     }
@@ -86,7 +84,7 @@ export async function POST(request: NextRequest) {
       if (!account) return privateError();
       const outgoing = privateJson({ account, draft: safeJourneyDraft(result.draft) });
       outgoing.cookies.set(JOURNEY_COOKIE, sealJourney(journeyToken!), {
-        httpOnly: true, sameSite: "lax", secure: false, path: "/", maxAge: 60 * 60 * 24,
+        httpOnly: true, sameSite: "lax", secure: Boolean(hostedPaidRegistrationOrigins()), path: "/", maxAge: 60 * 60 * 24,
       });
       return outgoing;
     }

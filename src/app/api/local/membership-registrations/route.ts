@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hostedPaidRegistrationOrigins, paidRegistrationApplicantAllowed } from "@/lib/localPaidGate";
 import { APPLICATION_SIGNATURE_PATH, signedProgramHeaders } from "@/lib/platoonMembership";
 import { localBackend, privateError, REGISTRATION_COOKIE, sealContinuation, UUID_PATTERN, TOKEN_PATTERN } from "@/lib/localPaidRegistration";
 
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
     const parsed = JSON.parse(text) as { submissionId?: unknown; application?: unknown };
     if (typeof parsed.submissionId !== "string" || !UUID_PATTERN.test(parsed.submissionId) || !parsed.application || typeof parsed.application !== "object") return privateError(400, "VALIDATION_FAILED");
     const applicant = (parsed.application as { applicant?: { email?: unknown } }).applicant;
-    if (typeof applicant?.email !== "string" || !/^[^\s@]+@example\.test$/i.test(applicant.email)) return privateError(400, "LOCAL_SYNTHETIC_EMAIL_REQUIRED");
+    if (!paidRegistrationApplicantAllowed(applicant?.email)) return privateError(400, hostedPaidRegistrationOrigins() ? "CONTROLLED_ACCEPTANCE_EMAIL_REQUIRED" : "LOCAL_SYNTHETIC_EMAIL_REQUIRED");
     const rawBody = JSON.stringify(parsed.application);
     const upstream = new URL("/api/public/membership-registrations", backend.endpoint.origin);
     const response = await fetch(upstream, {
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
       typeof result.replayed !== "boolean") return privateError();
     const outgoing = NextResponse.json({ applicationReference: result.applicationReference, registration, replayed: result.replayed }, {status:202,headers:{"Cache-Control":"private, no-store","Referrer-Policy":"no-referrer"}});
     outgoing.cookies.set(REGISTRATION_COOKIE, sealContinuation(registration.registrationId, result.continuation), {
-      httpOnly: true, sameSite: "lax", secure: false, path: "/", maxAge: 60 * 60 * 24 * 30,
+      httpOnly: true, sameSite: "lax", secure: Boolean(hostedPaidRegistrationOrigins()), path: "/", maxAge: 60 * 60 * 24 * 30,
     });
     return outgoing;
   } catch {

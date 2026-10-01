@@ -2,6 +2,7 @@ import "server-only";
 
 import { sealAuthenticatedState, unsealAuthenticatedState } from "./authenticatedState";
 import { intakeConfiguration, localPaidRegistrationEnabled, programCredentials } from "./platoonMembership";
+import { hostedPaidRegistrationOrigins } from "./localPaidGate";
 
 export const REGISTRATION_COOKIE = "bcf_local_registration";
 export const JOURNEY_COOKIE = "bcf_local_registration_journey";
@@ -12,11 +13,17 @@ export const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 export const JOURNEY_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,256}$/;
 
 export function localBackend(request: Request, mutation = false) {
-  if (!localPaidRegistrationEnabled(new URL(request.url).origin)) return null;
+  const actual = new URL(request.url);
+  if (!localPaidRegistrationEnabled(actual.origin)) return null;
+  const hosted = hostedPaidRegistrationOrigins();
   if (mutation) {
     try {
       const origin = new URL(request.headers.get("origin") ?? "");
-      const actual = new URL(request.url);
+      if (hosted) {
+        if (origin.origin !== hosted.site || origin.href !== `${hosted.site}/` ||
+          !request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) return null;
+        return intakeConfiguration();
+      }
       const hostOrigin = new URL(`${actual.protocol}//${request.headers.get("host") ?? actual.host}`);
       if (origin.origin !== hostOrigin.origin ||
         !request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) return null;

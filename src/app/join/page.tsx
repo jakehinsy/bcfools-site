@@ -39,7 +39,8 @@ export default async function JoinPage({
 }) {
   const params = await searchParams;
   const headerStore = await headers();
-  const localPaid = localPaidRegistrationEnabled(`http://${headerStore.get("host") ?? ""}`);
+  const paidProtocol = process.env.BREW_MEMBERSHIP_PAID_ACCEPTANCE === "true" ? "https" : "http";
+  const localPaid = localPaidRegistrationEnabled(`${paidProtocol}://${headerStore.get("host") ?? ""}`);
   const renewalUrl = membershipManagementUrl(siteConfig.links.renewal);
   if (params.type === "renewal") redirect(renewalUrl);
   const connectionStatus =

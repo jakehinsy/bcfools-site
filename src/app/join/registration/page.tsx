@@ -8,6 +8,7 @@ export const metadata={title:"Membership registration",robots:{index:false,follo
 
 export default async function RegistrationPage() {
   const host = (await headers()).get("host") ?? "";
-  if (!localPaidRegistrationEnabled(`http://${host}`)) notFound();
+  const paidProtocol = process.env.BREW_MEMBERSHIP_PAID_ACCEPTANCE === "true" ? "https" : "http";
+  if (!localPaidRegistrationEnabled(`${paidProtocol}://${host}`)) notFound();
   return <><SiteHeader /><main><RegistrationStatus /></main></>;
 }
