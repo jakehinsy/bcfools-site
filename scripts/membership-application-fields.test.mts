@@ -5,6 +5,7 @@ import test from "node:test";
 const form = await readFile(new URL("../src/app/join/MembershipApplicationForm.tsx", import.meta.url), "utf8");
 const route = await readFile(new URL("../src/app/api/membership-applications/route.ts", import.meta.url), "utf8");
 const membership = await readFile(new URL("../src/lib/platoonMembership.ts", import.meta.url), "utf8");
+const localPaidGate = await readFile(new URL("../src/lib/localPaidGate.ts", import.meta.url), "utf8");
 const contract = await readFile(new URL("../src/lib/membershipApplicationContract.ts", import.meta.url), "utf8");
 
 test("collects the International FOOLS DOB and structured mailing address", () => {
@@ -41,9 +42,9 @@ test("loads membership program configuration without requiring the account conne
 
 test("allows only development loopback HTTP for isolated certification", () => {
   assert.match(membership, /process\.env\.NODE_ENV !== "production"/);
-  assert.match(membership, /hostname === "localhost"/);
-  assert.match(membership, /hostname === "127\.0\.0\.1"/);
-  assert.match(membership, /hostname === "\[::1\]"/);
+  assert.match(localPaidGate, /hostname === "localhost"/);
+  assert.match(localPaidGate, /hostname === "127\.0\.0\.1"/);
+  assert.match(localPaidGate, /hostname === "\[::1\]"/);
   assert.match(membership, /PLATOON_MEMBER_WEB_ORIGIN/);
 });
 

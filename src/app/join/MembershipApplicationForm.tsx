@@ -1,12 +1,17 @@
 "use client";
 
-import { FormEvent, MouseEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, MouseEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { siteConfig } from "@/config/site";
+import { registrationSubmissionEnabled } from "@/lib/paidRegistrationPolicy";
 import { APPLICATION_SCHEMA_VERSION } from "@/lib/membershipApplicationContract";
+import { collectLocalPaidDraft, LOCAL_PAID_DRAFT_KEY, parseLocalPaidDraft, restoreLocalPaidDraft } from "@/lib/localPaidDraft";
+import { safeJourneyDraft } from "@/lib/localPaidJourneyDraft";
+import { pendingSubmissionDraft, shouldRefreshPaidBotProof } from "@/lib/paidSubmissionRecovery";
 import { membershipFormDefaults } from "@/lib/platoonConnectionPayload";
 import type { MembershipProgramConfig, PlatoonConnectionSummary } from "@/lib/platoonMembership";
+import { formatMembershipTermDate } from "./formatMembershipTermDate";
 import styles from "./join.module.css";
 
 type ApplicationType = "new" | "renewal";
@@ -40,6 +45,7 @@ type SubmissionState =
       nextAction: "await_review";
     }
   | { status: "error"; message: string };
+type PaidAccount = { connected: true; verified: boolean; maskedEmail: string | null };
 
 const stateOptions = [
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA",
@@ -51,6 +57,7 @@ const stateOptions = [
 
 const CONNECTION_BINDING_STORAGE_KEY = "bcf_platoon_connect_binding";
 const CONNECTION_HANDOFF_PREFIX = "#platoon-connect=";
+const PAID_ACCOUNT_PROBE_KEY = "bcf_paid_account_probe_v1";
 
 function formatMoney(amountMinor: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amountMinor / 100);
@@ -92,6 +99,9 @@ export function MembershipApplicationForm({
   platoonConnectionOrigin,
   platoonSignInAvailable,
   programConfig,
+  localPaid,
+  hostedAcceptance,
+  renewalAvailable,
   renewalUrl,
 }: {
   connectionSupportReference: string | null;
@@ -100,15 +110,30 @@ export function MembershipApplicationForm({
   platoonConnectionOrigin: string | null;
   platoonSignInAvailable: boolean;
   programConfig: MembershipProgramConfig | null;
+  localPaid: boolean;
+  hostedAcceptance: boolean;
+  renewalAvailable: boolean;
   renewalUrl: string;
 }) {
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
   const [connectionStarting, setConnectionStarting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
-  const submissionId = useRef<string | null>(null);
   const formStartedAt = useRef(new Date().toISOString());
   const turnstileContainer = useRef<HTMLDivElement | null>(null);
   const turnstileWidgetId = useRef<string | null>(null);
+  const [paidAccount, setPaidAccount] = useState<PaidAccount | null>(null);
+  const [signedInProbe, setSignedInProbe] = useState(false);
+  const [paidAccountChecking, setPaidAccountChecking] = useState(localPaid);
+  const [paidAccountBusy, setPaidAccountBusy] = useState(false);
+  const [paidAccountMessage, setPaidAccountMessage] = useState("");
+  const [formHydrated, setFormHydrated] = useState(false);
+  const submissionId = useRef<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const serverJourneyDraft = useRef<ReturnType<typeof parseLocalPaidDraft>>(null);
+  const formEditedSinceMount = useRef(false);
+  const accountReturnContext = useRef<{ returnCode: string | null; probeReturned: boolean } | null>(null);
+  const accountGeneration = useRef(0);
+  const manualAccountNavigation = useRef(false);
   const initialValues = membershipFormDefaults(initialConnection);
   const abuseProtection = programConfig?.abuseProtection;
   const turnstileAction = abuseProtection?.action ?? "membership_application";
@@ -116,9 +141,223 @@ export function MembershipApplicationForm({
   const turnstileSiteKey = abuseProtection?.siteKey ?? null;
   const turnstileEnabled = Boolean(abuseProtection?.enabled && turnstileSiteKey);
 
-  const newMemberAmountMinor = programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100;
+  const newMemberAmountMinor = localPaid ? 7500 : programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100;
   const renewalAmountMinor = programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100;
   const currency = programConfig?.program.currency ?? "USD";
+  const canSubmitRegistration = registrationSubmissionEnabled(localPaid, programConfig?.paidRegistration);
+  const pendingKey = "bcf_local_membership_submission_v1";
+
+  useEffect(() => { setFormHydrated(true); }, []);
+
+  useEffect(() => {
+    if (!localPaid || !formRef.current) return;
+    try {
+      const draft = parseLocalPaidDraft(sessionStorage.getItem(LOCAL_PAID_DRAFT_KEY)) ??
+        pendingSubmissionDraft(localStorage.getItem(pendingKey));
+      if (draft) restoreLocalPaidDraft(formRef.current, draft);
+    } catch { /* Server journey draft can still restore nonrestricted fields. */ }
+  }, [localPaid]);
+
+  // The account result changes the form's React tree after the first draft
+  // restore. Reapply the saved values after that commit if the visitor has not
+  // edited the returned form. A same-tab draft retains fields omitted from the
+  // server journey draft; a different tab can use the server draft instead.
+  useLayoutEffect(() => {
+    if (!localPaid || !paidAccount?.connected || !formRef.current || formEditedSinceMount.current) return;
+    let draft = null;
+    try { draft = parseLocalPaidDraft(sessionStorage.getItem(LOCAL_PAID_DRAFT_KEY)); }
+    catch { /* The server draft can still restore this return. */ }
+    if (draft ?? serverJourneyDraft.current) restoreLocalPaidDraft(formRef.current, draft ?? serverJourneyDraft.current!);
+  }, [localPaid, paidAccount, paidAccountChecking]);
+
+  function rememberLocalPaidDraft() {
+    if (!localPaid || !formRef.current) return;
+    try { sessionStorage.setItem(LOCAL_PAID_DRAFT_KEY, JSON.stringify(collectLocalPaidDraft(formRef.current))); }
+    catch { /* Continue with the server journey draft. */ }
+  }
+
+  function recoverRejectedPaidBotProof(pending: string | null) {
+    const draft = pendingSubmissionDraft(pending);
+    if (draft && formRef.current && !formEditedSinceMount.current) restoreLocalPaidDraft(formRef.current, draft);
+    rememberLocalPaidDraft();
+    localStorage.removeItem(pendingKey);
+    formStartedAt.current = new Date().toISOString();
+    resetTurnstile();
+    setSubmission({ status: "error", message: "The security check expired or could not be verified. Your application details are saved; complete the check again and retry." });
+  }
+
+  async function paidJourneyAction(action: "create" | "redeem" | "status" | "switch" | "bindCurrent", extra: Record<string, unknown> = {}) {
+    const response = await fetch("/api/membership-registration-journey", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...extra }), cache: "no-store", signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Error("Account connection unavailable.");
+    return response.json() as Promise<{ signInUrl?: string; preflightUrl?: string; account?: PaidAccount | { connected: false }; draft?: unknown }>;
+  }
+
+  useEffect(() => {
+    if (!localPaid) return;
+    const generation = accountGeneration.current;
+    let cancelled = false;
+    const isCurrent = () => !cancelled && accountGeneration.current === generation;
+    if (!accountReturnContext.current) {
+      const query = new URLSearchParams(window.location.search);
+      const returnCode = query.get("account_return");
+      const probe = query.get("account_probe");
+      const probeReturned = probe === "none" || probe === "signed_in";
+      if (probe === "signed_in") setSignedInProbe(true);
+      accountReturnContext.current = { returnCode, probeReturned };
+      if (returnCode !== null || probeReturned) {
+        query.delete("account_return");
+        query.delete("account_probe");
+        const cleaned = query.toString();
+        window.history.replaceState(null, "", `/join${cleaned ? `?${cleaned}` : ""}#application`);
+        try { sessionStorage.setItem(PAID_ACCOUNT_PROBE_KEY, "1"); } catch { /* Skip repeated probes if storage is unavailable. */ }
+      }
+    }
+    const { returnCode, probeReturned } = accountReturnContext.current;
+    // StrictMode cancels the first scheduled task during its effect replay.
+    // Only the active task may consume a one-time return code or start a probe.
+    const startTimer = window.setTimeout(() => { if (!isCurrent()) return; void (async () => {
+      let leavingForProbe = false;
+      try {
+        const result = returnCode
+          ? await paidJourneyAction("redeem", { returnCode })
+          : await paidJourneyAction("status");
+        if (!isCurrent()) return;
+        if (result.account?.connected === true && typeof result.account.verified === "boolean") {
+          if (returnCode) serverJourneyDraft.current = parseLocalPaidDraft(JSON.stringify(result.draft ?? null));
+          setPaidAccount(result.account);
+        } else if (returnCode) {
+          setPaidAccountMessage("That account could not be connected. You can try again or continue the application.");
+        } else if (!probeReturned && !manualAccountNavigation.current) {
+          let probeAvailable = false;
+          try {
+            probeAvailable = sessionStorage.getItem(PAID_ACCOUNT_PROBE_KEY) !== "1";
+            if (probeAvailable) sessionStorage.setItem(PAID_ACCOUNT_PROBE_KEY, "1");
+          } catch { /* Do not risk a redirect loop without tab storage. */ }
+          if (probeAvailable && isCurrent()) {
+            // A resumed registration takes priority over first-visit account discovery.
+            let pendingRegistration = false;
+            try { pendingRegistration = Boolean(localStorage.getItem(pendingKey)); } catch { /* Existing status is checked below. */ }
+            if (pendingRegistration) return;
+            const registrationStatus = await fetch("/api/membership-registration-continuation", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "status" }), cache: "no-store", signal: AbortSignal.timeout(15_000),
+            });
+            if (!isCurrent()) return;
+            if (registrationStatus.ok) {
+              window.location.assign("/join/registration");
+              return;
+            }
+            if (registrationStatus.status !== 401) return;
+            rememberLocalPaidDraft();
+            const created = await paidJourneyAction("create", {
+              draft: formRef.current ? safeJourneyDraft(collectLocalPaidDraft(formRef.current)) : {},
+            });
+            if (!isCurrent() || manualAccountNavigation.current || !created.preflightUrl) return;
+            leavingForProbe = true;
+            window.location.assign(created.preflightUrl);
+          }
+        }
+      } catch {
+        leavingForProbe = false;
+        if (isCurrent()) setPaidAccountMessage("Account sign-in is unavailable. You can still complete the application.");
+      } finally {
+        if (isCurrent() && !leavingForProbe) setPaidAccountChecking(false);
+      }
+    })(); }, 0);
+    return () => { cancelled = true; window.clearTimeout(startTimer); };
+  }, [localPaid]);
+
+  async function handlePaidSignIn() {
+    if (paidAccountBusy || submission.status === "submitting") return;
+    manualAccountNavigation.current = true;
+    accountGeneration.current += 1;
+    rememberLocalPaidDraft();
+    setPaidAccountBusy(true);
+    setPaidAccountMessage("");
+    try {
+      const result = await paidJourneyAction("create", { draft: formRef.current ? safeJourneyDraft(collectLocalPaidDraft(formRef.current)) : {} });
+      if (!result.signInUrl) throw new Error();
+      window.location.assign(result.signInUrl);
+    } catch {
+      setPaidAccountMessage("Account sign-in is unavailable. You can still complete the application.");
+      setPaidAccountBusy(false);
+    }
+  }
+
+  async function handlePaidAccountSwitch() {
+    if (paidAccountBusy || submission.status === "submitting") return;
+    manualAccountNavigation.current = true;
+    accountGeneration.current += 1;
+    rememberLocalPaidDraft();
+    setPaidAccountBusy(true);
+    setPaidAccountMessage("");
+    try {
+      await paidJourneyAction("switch");
+      setPaidAccount(null);
+      const created = await paidJourneyAction("create", { draft: formRef.current ? safeJourneyDraft(collectLocalPaidDraft(formRef.current)) : {} });
+      if (!created.signInUrl) throw new Error();
+      const switchUrl = new URL(created.signInUrl);
+      if (switchUrl.pathname !== "/membership/registration/sign-in") throw new Error();
+      switchUrl.pathname = "/membership/registration/switch";
+      window.location.assign(switchUrl.toString());
+    } catch { setPaidAccountMessage("Could not change account right now. Try again shortly."); }
+    finally { setPaidAccountBusy(false); }
+  }
+
+  useEffect(() => {
+    // Paused collection keeps the form visible, including for an applicant with
+    // an existing registration. Explicit status/resume remains available below.
+    if (!localPaid || !canSubmitRegistration) return;
+    const generation = accountGeneration.current;
+    const pending = localStorage.getItem(pendingKey);
+    try {
+      const parsed = pending ? JSON.parse(pending) as { submissionId?: unknown } : null;
+      if (!pending || typeof parsed?.submissionId === "string") {
+        if (typeof parsed?.submissionId === "string") submissionId.current = parsed.submissionId;
+        queueMicrotask(() => { if (accountGeneration.current === generation) setSubmission({ status: "submitting" }); });
+        void (async () => {
+          try {
+            const existing = await fetch("/api/membership-registration-continuation", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "status" }), cache: "no-store",
+            });
+            if (existing.ok) {
+              localStorage.removeItem(pendingKey);
+              try { await paidJourneyAction("bindCurrent"); } catch { /* Registration still resumes independently. */ }
+              if (accountGeneration.current === generation) window.location.assign("/join/registration");
+              return;
+            }
+            if (existing.status !== 401) throw new Error();
+            if (!pending) {
+              setSubmission({ status: "idle" });
+              return;
+            }
+            if (!canSubmitRegistration) {
+              setSubmission({ status: "idle" });
+              return; // Preserve pending identity; retry after collection is intentionally enabled.
+            }
+            const response = await fetch("/api/membership-registrations", {
+              method: "POST", headers: { "Content-Type": "application/json" }, body: pending,
+            });
+            const result = await response.json() as { registration?: { registrationId?: string }; error?: { code?: unknown } };
+            if (shouldRefreshPaidBotProof(response.status, result.error?.code)) {
+              if (accountGeneration.current === generation) recoverRejectedPaidBotProof(pending);
+              return;
+            }
+            if (!response.ok || !result.registration?.registrationId) throw new Error();
+            localStorage.removeItem(pendingKey);
+            try { await paidJourneyAction("bindCurrent"); } catch { /* Registration still resumes independently. */ }
+            if (accountGeneration.current === generation) window.location.assign("/join/registration");
+          } catch {
+            if (accountGeneration.current === generation) setSubmission({ status: "error", message: "Your earlier submission could not be confirmed. Retry the same attempt when the service is available." });
+          }
+        })();
+      }
+    } catch { if (pending) localStorage.removeItem(pendingKey); }
+  }, [localPaid, canSubmitRegistration]);
 
   const renderTurnstile = useCallback(() => {
     if (
@@ -155,6 +394,7 @@ export function MembershipApplicationForm({
   }, []);
 
   useEffect(() => {
+    if (localPaid) return;
     if (window.location.hash.startsWith(CONNECTION_HANDOFF_PREFIX)) {
       const encoded = window.location.hash.slice(CONNECTION_HANDOFF_PREFIX.length);
       const browserBinding = sessionStorage.getItem(CONNECTION_BINDING_STORAGE_KEY) ?? "";
@@ -214,7 +454,7 @@ export function MembershipApplicationForm({
       sessionStorage.removeItem(CONNECTION_BINDING_STORAGE_KEY);
       window.location.assign("/join?platoon=unavailable&type=new#application");
     });
-  }, [platoonConnectionOrigin]);
+  }, [platoonConnectionOrigin, localPaid]);
 
   async function handlePlatoonSignIn(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -242,6 +482,7 @@ export function MembershipApplicationForm({
   }
 
   function resetAttempt() {
+    if (localPaid && localStorage.getItem(pendingKey)) return;
     if (submission.status !== "submitting") {
       submissionId.current = null;
       setSubmission({ status: "idle" });
@@ -250,6 +491,7 @@ export function MembershipApplicationForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canSubmitRegistration) return;
     const form = event.currentTarget;
     const formData = new FormData(form);
     if (turnstileRequired && !turnstileToken) {
@@ -259,15 +501,14 @@ export function MembershipApplicationForm({
       });
       return;
     }
+    const pending = localPaid ? localStorage.getItem(pendingKey) : null;
     const currentSubmissionId = submissionId.current ?? crypto.randomUUID();
+    const generation = accountGeneration.current;
     submissionId.current = currentSubmissionId;
     setSubmission({ status: "submitting" });
 
     try {
-      const response = await fetch("/api/membership-applications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const payload = pending ? JSON.parse(pending) : {
           submissionId: currentSubmissionId,
           application: {
             schemaVersion: APPLICATION_SCHEMA_VERSION,
@@ -316,7 +557,28 @@ export function MembershipApplicationForm({
               },
             } : {}),
           },
-        }),
+        };
+      if (localPaid && !pending) localStorage.setItem(pendingKey, JSON.stringify(payload));
+      if (localPaid) {
+        const existing = await fetch("/api/membership-registration-continuation", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "status" }), cache: "no-store",
+        });
+        if (existing.ok) {
+          localStorage.removeItem(pendingKey);
+          try { await paidJourneyAction("bindCurrent"); } catch { /* Registration still resumes independently. */ }
+          if (accountGeneration.current === generation) window.location.assign("/join/registration");
+          return;
+        }
+        if (existing.status !== 401) {
+          setSubmission({ status: "error", message: "We could not check your existing registration. Try again shortly." });
+          return;
+        }
+      }
+      const response = await fetch(localPaid ? "/api/membership-registrations" : "/api/membership-applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
       const result = (await response.json()) as {
         applicationReference?: string;
@@ -325,7 +587,26 @@ export function MembershipApplicationForm({
         nextAction?: "await_review";
         replayed?: boolean;
         error?: { code?: string };
+        registration?: { registrationId?: string };
       };
+
+      if (localPaid) {
+        if (shouldRefreshPaidBotProof(response.status, result.error?.code)) {
+          if (accountGeneration.current === generation) recoverRejectedPaidBotProof(localStorage.getItem(pendingKey));
+          return;
+        }
+        if (response.ok && result.registration?.registrationId && result.applicationReference) {
+          localStorage.removeItem(pendingKey);
+          try { sessionStorage.removeItem(LOCAL_PAID_DRAFT_KEY); } catch { /* Navigation can continue. */ }
+          try { await paidJourneyAction("bindCurrent"); } catch { /* Registration still resumes independently. */ }
+          if (accountGeneration.current === generation) window.location.assign("/join/registration");
+          return;
+        }
+        setSubmission({ status: "error", message: result.error?.code === "VALIDATION_FAILED"
+          ? "Please review your details. If you change them, start a new application."
+          : "We could not confirm this registration. Resume the same attempt to check again." });
+        return;
+      }
 
       if (
         !response.ok ||
@@ -356,7 +637,7 @@ export function MembershipApplicationForm({
       });
       form.reset();
     } catch {
-      submissionId.current = null;
+      if (!localPaid) submissionId.current = null;
       resetTurnstile();
       setSubmission({
         status: "error",
@@ -367,7 +648,36 @@ export function MembershipApplicationForm({
 
   return (
     <>
-      {initialConnection || platoonSignInAvailable || connectionStatus ? (
+      {localPaid ? (
+        <section className={styles.platoonConnection} aria-labelledby="paid-account-title">
+          {paidAccount ? (
+            <div className={styles.connectionConfirmed}>
+              <span aria-hidden="true">&#10003;</span>
+              <div>
+                <strong id="paid-account-title">Platoon account signed in</strong>
+                {paidAccount.verified
+                  ? <p>{paidAccount.maskedEmail ? `Verified account: ${paidAccount.maskedEmail}. ` : "Account email verified. "}Use the same email in your application for automatic account connection after payment.</p>
+                  : <p>Email verification is required to connect membership after payment. You can continue your application now.</p>}
+              </div>
+              <button disabled={paidAccountBusy || submission.status === "submitting"} onClick={() => void handlePaidAccountSwitch()} type="button">Change account</button>
+            </div>
+          ) : paidAccountChecking ? (
+            <p className={styles.connectionChecking} id="paid-account-title" role="status">Checking for an existing Platoon account…</p>
+          ) : (
+            <div className={styles.connectionPrompt}>
+              <div>
+                <strong id="paid-account-title">{signedInProbe ? "Already signed in to Platoon?" : "Already have a Platoon account?"}</strong>
+                <p>{signedInProbe ? "Connect this account to your registration, or continue the application and connect after payment." : "Sign in now if you like. New members can complete the application without an account."}</p>
+              </div>
+              <button disabled={paidAccountBusy || submission.status === "submitting"} onClick={() => void handlePaidSignIn()} type="button">
+                {paidAccountBusy ? "Opening Platoon…" : signedInProbe ? "Connect this Platoon account" : "Sign in with Platoon"}
+              </button>
+            </div>
+          )}
+          {paidAccountMessage ? <p className={styles.connectionError} role="status">{paidAccountMessage}</p> : null}
+        </section>
+      ) : null}
+      {!localPaid && (initialConnection || platoonSignInAvailable || connectionStatus) ? (
         <section className={styles.platoonConnection} aria-labelledby="platoon-connection-title">
           {initialConnection ? (
             <div className={styles.connectionConfirmed}>
@@ -416,7 +726,7 @@ export function MembershipApplicationForm({
         </section>
       ) : null}
 
-      <form className={styles.form} onChange={resetAttempt} onSubmit={handleSubmit}>
+      <form className={styles.form} inert={localPaid && (!formHydrated || paidAccountChecking)} ref={formRef} onChange={() => { formEditedSinceMount.current = true; rememberLocalPaidDraft(); resetAttempt(); }} onSubmit={handleSubmit}>
       {turnstileEnabled ? (
         <Script
           onReady={renderTurnstile}
@@ -429,14 +739,18 @@ export function MembershipApplicationForm({
         <input autoComplete="off" name="website" tabIndex={-1} />
       </label>
       <div className={styles.paymentNotice} role="note">
-        <strong>What happens after you apply</strong>
+        <strong>{localPaid ? `One-time ${programConfig?.program.chapterName ?? siteConfig.name} membership` : "What happens after you apply"}</strong>
         <p>
-          No payment is collected with this application. Watch your email for
+          {localPaid
+            ? `The $75 one-time payment covers membership through ${formatMembershipTermDate(programConfig?.paidRegistration?.paidThrough) ?? "the term shown at checkout"}. ${canSubmitRegistration ? "After submitting, continue to secure checkout. Your membership becomes active after payment is confirmed." : "New registration submission is currently paused. You can fill in the form and resume an existing registration without another payment."}`
+            : <>No payment is collected with this application. Watch your email for
           the chapter&apos;s decision and, if approved, secure instructions for your
           Platoon account. The chapter will provide
-          dues instructions after approval and completed Platoon onboarding.
+          dues instructions after approval and completed Platoon onboarding.</>}
         </p>
       </div>
+
+      {!canSubmitRegistration && <div className={styles.paymentNotice} role="status"><p>You can review and fill in this form. Submission and Checkout are paused; no application will be submitted and no payment will be started.</p><p>Already submitted? <Link href="/join/registration">View your registration status</Link>.</p></div>}
 
       <fieldset className={styles.fieldset}>
         <legend>What can we help you with?</legend>
@@ -452,13 +766,13 @@ export function MembershipApplicationForm({
             <b>{formatMoney(newMemberAmountMinor, currency)}</b>
           </div>
 
-          <Link className={`${styles.typeCard} ${styles.typeCardLink}`} href={renewalUrl}>
+          {renewalAvailable ? <Link className={`${styles.typeCard} ${styles.typeCardLink}`} href={renewalUrl}>
             <span>
               <strong>Annual renewal</strong>
               <small>Sign in to your Platoon account</small>
             </span>
             <b>{formatMoney(renewalAmountMinor, currency)}</b>
-          </Link>
+          </Link> : null}
         </div>
       </fieldset>
 
@@ -640,24 +954,27 @@ export function MembershipApplicationForm({
       {turnstileEnabled ? (
         <div className={styles.securityCheck}>
           <div ref={turnstileContainer} />
-          <p>This security check helps us keep automated spam out of the chapter&apos;s review queue.</p>
+          <p>This security check helps us keep automated spam out of membership applications.</p>
         </div>
       ) : null}
 
       <button
         className={styles.submitButton}
         disabled={
+          !canSubmitRegistration ||
           submission.status === "submitting" ||
           submission.status === "success" ||
           Boolean(turnstileRequired && !turnstileToken)
         }
         type="submit"
       >
-        {submission.status === "submitting"
-          ? "Sending application…"
+        {!canSubmitRegistration
+          ? "Registration paused"
+          : submission.status === "submitting"
+          ? (localPaid ? "Starting registration…" : "Sending application…")
           : submission.status === "success"
             ? "Application sent"
-            : "Submit for chapter review"}
+            : (localPaid ? "Continue to registration" : "Submit for chapter review")}
       </button>
 
       {submission.status === "success" ? (

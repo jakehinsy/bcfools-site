@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { paidRegistrationSiteOrigin } from "@/lib/localPaidGate";
 import { siteConfig } from "@/config/site";
 import {
   CONNECTION_COOKIE,
@@ -10,6 +11,7 @@ import {
   connectionSummary,
   membershipManagementUrl,
   membershipProgramConfiguration,
+  localPaidRegistrationEnabled,
   programCredentials,
   readConnection,
 } from "@/lib/platoonMembership";
@@ -18,12 +20,14 @@ import { LegalLinks } from "../LegalLinks";
 import { SiteHeader } from "../SiteHeader";
 import { ArrowIcon } from "../ArrowIcon";
 import { MembershipApplicationForm } from "./MembershipApplicationForm";
+import { formatMembershipTermDate } from "./formatMembershipTermDate";
 import styles from "./join.module.css";
 
 export const metadata: Metadata = {
-  title: "Join the Chapter",
+  title: "Brew City FOOLS Membership",
   description:
     "Apply for a new Brew City FOOLS membership or renew your annual chapter membership.",
+  referrer: "no-referrer",
 };
 
 export default async function JoinPage({
@@ -36,8 +40,12 @@ export default async function JoinPage({
   }>;
 }) {
   const params = await searchParams;
-  const renewalUrl = membershipManagementUrl(siteConfig.links.renewal);
-  if (params.type === "renewal") redirect(renewalUrl);
+  const hostedAcceptance = process.env.BREW_MEMBERSHIP_PAID_ACCEPTANCE === "true";
+  const paidRequested = hostedAcceptance || process.env.BREW_MEMBERSHIP_PAID_PRODUCTION === "true" || process.env.BREW_MEMBERSHIP_PAID_LOCAL === "true";
+  const siteOrigin = paidRegistrationSiteOrigin();
+  const localPaid = siteOrigin !== null && localPaidRegistrationEnabled(siteOrigin);
+  const renewalUrl = hostedAcceptance ? "" : membershipManagementUrl(siteConfig.links.renewal);
+  if (params.type === "renewal" && !hostedAcceptance) redirect(renewalUrl);
   const connectionStatus =
     params.platoon === "connected" ||
     params.platoon === "error" ||
@@ -51,18 +59,19 @@ export default async function JoinPage({
     ? rawConnectionSupportReference
     : null;
   let initialConnection = null;
-  const programConfig = await membershipProgramConfiguration();
+  const programConfig = await membershipProgramConfiguration(localPaid);
   const abuseProtectionReady = !programConfig?.abuseProtection?.required || Boolean(
     programConfig.abuseProtection.enabled && programConfig.abuseProtection.siteKey,
   );
   const applicationReady = Boolean(
-    programConfig?.program.enabledApplicationTypes.includes("new") && abuseProtectionReady,
+    (!paidRequested || localPaid) && programConfig?.program.enabledApplicationTypes.includes("new") &&
+    programConfig?.paidRegistration?.formVisible !== false && abuseProtectionReady,
   );
-  const membershipCurrency = programConfig?.program.currency ?? "USD";
+  const membershipCurrency = localPaid ? "USD" : programConfig?.program.currency ?? "USD";
   const formatMembershipPrice = (amountMinor: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: membershipCurrency }).format(amountMinor / 100);
   let platoonConnectionOrigin: string | null = null;
-  try {
+  if (!localPaid) try {
     const cookieStore = await cookies();
     const connection = readConnection(
       cookieStore.get(CONNECTION_COOKIE)?.value,
@@ -72,7 +81,7 @@ export default async function JoinPage({
   } catch {
     initialConnection = null;
   }
-  try {
+  if (!localPaid) try {
     platoonConnectionOrigin = connectionConfiguration().returnUrl.origin;
   } catch {
     platoonConnectionOrigin = null;
@@ -102,17 +111,17 @@ export default async function JoinPage({
             <h1>Pull up a chair.</h1>
             <div className={styles.heroIntro}>
               <p>
-                Whether you are joining for the first time or renewing for
-                another year, you are helping keep good training, strong
-                friendships, and the traditions of the job moving forward.
+                {localPaid
+                  ? "Join the Brew City chapter and help keep good training, strong friendships, and the traditions of the job moving forward."
+                  : "Whether you are joining for the first time or renewing for another year, you are helping keep good training, strong friendships, and the traditions of the job moving forward."}
               </p>
               <div className={styles.heroPrices} aria-label="Membership prices">
                 <span>
-                  New member <strong>{formatMembershipPrice(programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100)}</strong>
+                  New member <strong>{formatMembershipPrice(localPaid ? 7500 : programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100)}</strong>
                 </span>
-                <span>
-                  Annual renewal <strong>{formatMembershipPrice(programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100)}</strong>
-                </span>
+                  {!hostedAcceptance ? <span>
+                  {localPaid ? "Paid through" : "Annual renewal"} <strong>{localPaid ? formatMembershipTermDate(programConfig?.paidRegistration?.paidThrough) : formatMembershipPrice(programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100)}</strong>
+                </span> : null}
               </div>
             </div>
           </div>
@@ -124,27 +133,27 @@ export default async function JoinPage({
               {applicationReady ? (
                 <>
                   <p className={styles.eyebrow}>How it works</p>
-                  <h2>Simple, secure, and reviewed by the chapter.</h2>
+                  <h2>{localPaid ? "Simple, secure registration and checkout." : "Simple, secure, and reviewed by the chapter."}</h2>
                   <ol>
                     <li>
                       <span>01</span>
                       <div>
                         <strong>Apply online</strong>
-                        <p>Submit your details online. No payment is collected with the application.</p>
+                        <p>{localPaid ? (programConfig?.paidRegistration?.available ? "Submit your details and continue to secure checkout for a one-time $75 payment." : "Review and fill in the application. New membership registration is currently paused; existing registrations can still be resumed.") : "Submit your details online. No payment is collected with the application."}</p>
                       </div>
                     </li>
                     <li>
                       <span>02</span>
                       <div>
-                        <strong>Chapter review</strong>
-                        <p>The Membership Trustee and President review every new application.</p>
+                        <strong>{localPaid ? "Confirm payment" : "Chapter review"}</strong>
+                        <p>{localPaid ? "Your registration and payment status appear on the next page." : "The Membership Trustee and President review every new application."}</p>
                       </div>
                     </li>
                     <li>
                       <span>03</span>
                       <div>
                         <strong>Continue by email</strong>
-                        <p>If approved, follow the secure email instructions to claim or sign in to your Platoon account. The chapter will provide dues instructions after you complete onboarding.</p>
+                        <p>{localPaid ? "Use the secure link from email to resume registration or connect your account." : "If approved, follow the secure email instructions to claim or sign in to your Platoon account. The chapter will provide dues instructions after you complete onboarding."}</p>
                       </div>
                     </li>
                   </ol>
@@ -161,13 +170,13 @@ export default async function JoinPage({
                         <p>Introduce yourself, tell us about your fire-service experience, and join the chapter.</p>
                       </div>
                     </li>
-                    <li>
+                    {!hostedAcceptance ? <li>
                       <span>02</span>
                       <div>
                         <strong>Returning members</strong>
                         <p>Renew your annual chapter membership and keep your record current.</p>
                       </div>
-                    </li>
+                    </li> : null}
                     <li>
                       <span>03</span>
                       <div>
@@ -181,10 +190,14 @@ export default async function JoinPage({
             </aside>
 
             <div className={styles.formPanel}>
+              {hostedAcceptance && params.type === "renewal" ? <div role="status" className={styles.applicationFallback}>
+                <h2>Renewals are unavailable here.</h2>
+                <p>This registration flow supports new memberships only. Please contact the membership team for renewal help.</p>
+              </div> : null}
               {applicationReady ? (
                 <>
                   <div className={styles.formHeading}>
-                    <p className={styles.eyebrow}>Chapter application</p>
+                    <p className={styles.eyebrow}>{programConfig?.program.chapterName ?? siteConfig.name} membership</p>
                     <h2>Let&apos;s get you started.</h2>
                     <p>Required fields are marked by the browser when you continue.</p>
                   </div>
@@ -195,6 +208,9 @@ export default async function JoinPage({
                     platoonConnectionOrigin={platoonConnectionOrigin}
                     platoonSignInAvailable={Boolean(platoonConnectionOrigin)}
                     programConfig={programConfig}
+                    localPaid={localPaid}
+                    hostedAcceptance={hostedAcceptance}
+                    renewalAvailable={!localPaid && !hostedAcceptance}
                     renewalUrl={renewalUrl}
                   />
                 </>

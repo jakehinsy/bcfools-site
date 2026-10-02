@@ -122,3 +122,108 @@ test("a callback from browser A is rejected in browser B", { timeout: 30_000 }, 
     /^\/join\?platoon=error&type=renewal&connection_ref=CONN-[A-F0-9]{8}#application$/,
   );
 });
+
+test("connection fallback redirects use the configured origin despite hostile host headers", { timeout: 30_000 }, async (context) => {
+  const port = await availablePort();
+  const localOrigin = `http://127.0.0.1:${port}`;
+  const configuredOrigin = "https://brew.example.test";
+  const output = [];
+  const server = spawn(
+    process.execPath,
+    [path.join(repositoryRoot, "node_modules", "next", "dist", "bin", "next"), "start", "--hostname", "127.0.0.1", "--port", String(port)],
+    {
+      cwd: repositoryRoot,
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        PLATOON_MEMBERSHIP_CONNECTION_AUTHORIZE_URL: "https://example.test/membership-connect/authorize",
+        PLATOON_MEMBERSHIP_CONNECTION_EXCHANGE_URL: "https://example.test/api/public/membership-connections/exchange",
+        PLATOON_MEMBERSHIP_PROGRAM_HANDLE: "mpp_bcfools_20260802",
+        PLATOON_MEMBERSHIP_PROGRAM_KEY: "mpk_abcdefghijklmnop",
+        PLATOON_MEMBERSHIP_PROGRAM_SECRET: "",
+        PLATOON_MEMBERSHIP_RETURN_URL: `${configuredOrigin}/api/platoon/connect/callback`,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  server.stdout.on("data", (chunk) => output.push(chunk.toString()));
+  server.stderr.on("data", (chunk) => output.push(chunk.toString()));
+  context.after(() => {
+    if (!server.killed) server.kill();
+  });
+
+  await waitForServer(localOrigin, output);
+  const hostileHeaders = { Host: "attacker.example", "X-Forwarded-Host": "attacker.example" };
+  const startResponse = await fetch(`${localOrigin}/api/platoon/connect/start?type=renewal`, {
+    headers: hostileHeaders,
+    redirect: "manual",
+  });
+  assert.equal(startResponse.status, 307);
+  const startLocation = new URL(startResponse.headers.get("location"));
+  assert.equal(startLocation.origin, configuredOrigin);
+  assert.equal(startLocation.pathname, "/join");
+  assert.equal(startLocation.searchParams.get("platoon"), "unavailable");
+  assert.equal(startLocation.searchParams.get("type"), "renewal");
+
+  const callbackResponse = await fetch(`${localOrigin}/api/platoon/connect/callback?code=bad`, {
+    headers: hostileHeaders,
+    redirect: "manual",
+  });
+  assert.equal(callbackResponse.status, 307);
+  const callbackLocation = new URL(callbackResponse.headers.get("location"));
+  assert.equal(callbackLocation.origin, configuredOrigin);
+  assert.equal(callbackLocation.pathname, "/join");
+  assert.equal(callbackLocation.searchParams.get("platoon"), "error");
+  assert.match(callbackLocation.searchParams.get("connection_ref"), /^CONN-[A-F0-9]{8}$/);
+
+  const postResponse = await fetch(`${localOrigin}/api/platoon/connect/callback`, {
+    method: "POST",
+    headers: { ...hostileHeaders, "Content-Type": "application/json" },
+    body: "{}",
+  });
+  assert.equal(postResponse.status, 503);
+  assert.match(
+    (await postResponse.json()).redirectTo,
+    /^\/join\?platoon=error&connection_ref=CONN-[A-F0-9]{8}#application$/,
+  );
+});
+
+test("connection fallback fails closed without a valid configured return URL", { timeout: 30_000 }, async (context) => {
+  const port = await availablePort();
+  const localOrigin = `http://127.0.0.1:${port}`;
+  const output = [];
+  const server = spawn(
+    process.execPath,
+    [path.join(repositoryRoot, "node_modules", "next", "dist", "bin", "next"), "start", "--hostname", "127.0.0.1", "--port", String(port)],
+    {
+      cwd: repositoryRoot,
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        PLATOON_MEMBERSHIP_CONNECTION_AUTHORIZE_URL: "https://example.test/membership-connect/authorize",
+        PLATOON_MEMBERSHIP_CONNECTION_EXCHANGE_URL: "https://example.test/api/public/membership-connections/exchange",
+        PLATOON_MEMBERSHIP_PROGRAM_HANDLE: "mpp_bcfools_20260802",
+        PLATOON_MEMBERSHIP_PROGRAM_KEY: "mpk_abcdefghijklmnop",
+        PLATOON_MEMBERSHIP_PROGRAM_SECRET: "",
+        PLATOON_MEMBERSHIP_RETURN_URL: "",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  server.stdout.on("data", (chunk) => output.push(chunk.toString()));
+  server.stderr.on("data", (chunk) => output.push(chunk.toString()));
+  context.after(() => {
+    if (!server.killed) server.kill();
+  });
+
+  await waitForServer(localOrigin, output);
+  const headers = { Host: "attacker.example", "X-Forwarded-Host": "attacker.example" };
+  for (const pathName of ["start", "callback"]) {
+    const response = await fetch(`${localOrigin}/api/platoon/connect/${pathName}`, {
+      headers,
+      redirect: "manual",
+    });
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("location"), null);
+  }
+});

@@ -1,21 +1,11 @@
-import { NextResponse } from "next/server";
 import { createHmac } from "node:crypto";
 import { siteConfig } from "@/config/site";
-import {
-  APPLICATION_SCHEMA_VERSION,
-  APPLICATION_SIGNATURE_PATH,
-  CONNECTION_COOKIE,
-  intakeConfiguration,
-  readConnection,
-  signedProgramHeaders,
-} from "@/lib/platoonMembership";
+import { APPLICATION_SCHEMA_VERSION } from "./membershipApplicationContract";
 
-export const runtime = "nodejs";
-
-const MAX_REQUEST_BYTES = 16_384;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type ApplicationPayload = {
+// Preserve the production Turnstile and structured-application intake contract.
+export type ApplicationPayload = {
   schemaVersion: string;
   applicationType: "new";
   applicant: {
@@ -81,7 +71,7 @@ function abuseProtectionProof(value: unknown): ApplicationPayload["abuseProtecti
   return { turnstileToken, formStartedAt, website, networkFingerprint: null };
 }
 
-function networkFingerprint(request: Request, secret: string): string | null {
+export function networkFingerprint(request: Request, secret: string): string | null {
   const forwarded = request.headers.get("x-vercel-forwarded-for") ??
     (process.env.NODE_ENV !== "production" ? request.headers.get("x-forwarded-for") : null);
   const address = forwarded?.split(",", 1)[0]?.trim();
@@ -100,7 +90,7 @@ function isAdultDateOfBirth(value: string): boolean {
   return birthDate <= adultCutoff && birthDate >= oldestCutoff;
 }
 
-function parseSubmission(value: unknown): SubmissionBody | null {
+export function parseMembershipSubmission(value: unknown): SubmissionBody | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const root = value as Record<string, unknown>;
   const application = root.application as Record<string, unknown> | undefined;
@@ -193,113 +183,4 @@ function parseSubmission(value: unknown): SubmissionBody | null {
       ...(abuseProtection ? { abuseProtection } : {}),
     },
   };
-}
-
-function publicError(status: number) {
-  if (status === 400) return { status: 400, code: "VALIDATION_FAILED" };
-  if (status === 403) return { status: 403, code: "BOT_CHECK_FAILED" };
-  if (status === 409) return { status: 409, code: "SUBMISSION_CONFLICT" };
-  if (status === 429) return { status: 429, code: "RATE_LIMITED" };
-  return { status: 503, code: "INTAKE_UNAVAILABLE" };
-}
-
-export async function POST(request: Request) {
-  // Paid admission has its own durable registration path. Never fall back to
-  // legacy intake when a configured paid journey is paused or misconfigured.
-  if (process.env.BREW_MEMBERSHIP_PAID_PRODUCTION === "true" || process.env.BREW_MEMBERSHIP_PAID_ACCEPTANCE === "true" || process.env.BREW_MEMBERSHIP_PAID_LOCAL === "true") {
-    return NextResponse.json({ error: { code: "PAID_REGISTRATION_REQUIRED" } }, { status: 409 });
-  }
-  try {
-    const declaredLength = Number(request.headers.get("content-length") ?? "0");
-    if (declaredLength > MAX_REQUEST_BYTES) {
-      return NextResponse.json({ error: { code: "VALIDATION_FAILED" } }, { status: 400 });
-    }
-    const requestText = await request.text();
-    if (Buffer.byteLength(requestText) > MAX_REQUEST_BYTES) {
-      return NextResponse.json({ error: { code: "VALIDATION_FAILED" } }, { status: 400 });
-    }
-    let requestBody: unknown;
-    try {
-      requestBody = JSON.parse(requestText);
-    } catch {
-      return NextResponse.json({ error: { code: "VALIDATION_FAILED" } }, { status: 400 });
-    }
-    const submission = parseSubmission(requestBody);
-    if (!submission) {
-      return NextResponse.json({ error: { code: "VALIDATION_FAILED" } }, { status: 400 });
-    }
-
-    const { endpoint, programKeyId, secret, bypassSecret } = intakeConfiguration();
-    const cookieHeader = request.headers.get("cookie") ?? "";
-    const connectionCookie = cookieHeader
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(`${CONNECTION_COOKIE}=`))
-      ?.slice(CONNECTION_COOKIE.length + 1);
-    const connection = readConnection(connectionCookie, secret);
-    const protectedApplication: ApplicationPayload = submission.application.abuseProtection
-      ? {
-          ...submission.application,
-          abuseProtection: {
-            ...submission.application.abuseProtection,
-            networkFingerprint: networkFingerprint(request, secret),
-          },
-        }
-      : submission.application;
-    const application: ApplicationPayload = connection
-      ? {
-          ...protectedApplication,
-          applicant: {
-            ...protectedApplication.applicant,
-            email: connection.verifiedEmail,
-          },
-          accountConnection: { receipt: connection.receipt },
-        }
-      : protectedApplication;
-    const rawBody = JSON.stringify(application);
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: signedProgramHeaders({
-        rawBody,
-        idempotencyKey: submission.submissionId,
-        path: APPLICATION_SIGNATURE_PATH,
-        programKeyId,
-        secret,
-        bypassSecret,
-      }),
-      body: rawBody,
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!response.ok) {
-      const error = publicError(response.status);
-      return NextResponse.json({ error: { code: error.code } }, { status: error.status });
-    }
-
-    const result = (await response.json()) as Record<string, unknown>;
-    if (
-      typeof result.applicationReference !== "string" ||
-      result.reviewStatus !== "submitted" ||
-      result.paymentStatus !== "not_started" ||
-      result.nextAction !== "await_review" ||
-      typeof result.replayed !== "boolean"
-    ) {
-      return NextResponse.json({ error: { code: "INTAKE_UNAVAILABLE" } }, { status: 503 });
-    }
-    const publicResponse = NextResponse.json(
-      {
-        applicationReference: result.applicationReference,
-        reviewStatus: "submitted",
-        paymentStatus: "not_started",
-        nextAction: result.nextAction,
-        replayed: result.replayed,
-      },
-      { status: 202 },
-    );
-    if (connection) publicResponse.cookies.delete(CONNECTION_COOKIE);
-    return publicResponse;
-  } catch {
-    return NextResponse.json({ error: { code: "INTAKE_UNAVAILABLE" } }, { status: 503 });
-  }
 }
