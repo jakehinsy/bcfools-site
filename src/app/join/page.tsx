@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { paidRegistrationSiteOrigin } from "@/lib/localPaidGate";
+import { paidRegistrationMemberOrigin, paidRegistrationSiteOrigin } from "@/lib/localPaidGate";
 import { siteConfig } from "@/config/site";
 import {
   CONNECTION_COOKIE,
@@ -208,6 +208,7 @@ export default async function JoinPage({
                     platoonConnectionOrigin={platoonConnectionOrigin}
                     platoonSignInAvailable={Boolean(platoonConnectionOrigin)}
                     programConfig={programConfig}
+                    controlledMemberOrigin={localPaid ? paidRegistrationMemberOrigin() : null}
                     localPaid={localPaid}
                     hostedAcceptance={hostedAcceptance}
                     renewalAvailable={!localPaid && !hostedAcceptance}

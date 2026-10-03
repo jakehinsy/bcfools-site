@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { canContinuePaidAccount } from "@/lib/paidRegistrationAccess";
 import { paidAutoContinuationAttemptKey } from "@/lib/paidAutoContinuation";
+import { safeControlledAuthorizationUrl } from "@/lib/controlledRegistrationHandoff";
 import { formatMembershipTermDate } from "../formatMembershipTermDate";
 import { RegistrationSummary, type RegistrationStatusData } from "./RegistrationSummary";
 import styles from "../join.module.css";
@@ -12,7 +13,7 @@ type Status = RegistrationStatusData;
 
 const pendingKey = "bcf_local_membership_submission_v1";
 
-export function RegistrationStatus() {
+export function RegistrationStatus({ controlledMemberOrigin }: { controlledMemberOrigin: string | null }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [message, setMessage] = useState("Checking registration…");
   const [busy, setBusy] = useState(false);
@@ -114,7 +115,13 @@ export function RegistrationStatus() {
     if (busy) return;
     setBusy(true);
     try {
-      const result = await requestAction("checkout") as { state?: string; url?: string };
+      const result = await requestAction("checkout") as { state?: string; url?: string; requestToken?: string };
+      if (result.state === "authorization_required") {
+        const destination = safeControlledAuthorizationUrl(result.url, result.requestToken, controlledMemberOrigin);
+        if (!destination) throw new Error();
+        window.location.assign(destination);
+        return;
+      }
       if (result.state === "open" && result.url) {
         const destination = new URL(result.url);
         if (destination.protocol !== "https:" || destination.hostname !== "checkout.stripe.com") throw new Error();

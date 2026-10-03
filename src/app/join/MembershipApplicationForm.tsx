@@ -9,6 +9,7 @@ import { APPLICATION_SCHEMA_VERSION } from "@/lib/membershipApplicationContract"
 import { collectLocalPaidDraft, LOCAL_PAID_DRAFT_KEY, parseLocalPaidDraft, restoreLocalPaidDraft } from "@/lib/localPaidDraft";
 import { safeJourneyDraft } from "@/lib/localPaidJourneyDraft";
 import { pendingSubmissionDraft, shouldRefreshPaidBotProof } from "@/lib/paidSubmissionRecovery";
+import { controlledAuthorizationResponse } from "@/lib/controlledRegistrationHandoff";
 import { membershipFormDefaults } from "@/lib/platoonConnectionPayload";
 import type { MembershipProgramConfig, PlatoonConnectionSummary } from "@/lib/platoonMembership";
 import { formatMembershipTermDate } from "./formatMembershipTermDate";
@@ -99,6 +100,7 @@ export function MembershipApplicationForm({
   platoonConnectionOrigin,
   platoonSignInAvailable,
   programConfig,
+  controlledMemberOrigin,
   localPaid,
   hostedAcceptance,
   renewalAvailable,
@@ -110,6 +112,7 @@ export function MembershipApplicationForm({
   platoonConnectionOrigin: string | null;
   platoonSignInAvailable: boolean;
   programConfig: MembershipProgramConfig | null;
+  controlledMemberOrigin: string | null;
   localPaid: boolean;
   hostedAcceptance: boolean;
   renewalAvailable: boolean;
@@ -347,6 +350,11 @@ export function MembershipApplicationForm({
               if (accountGeneration.current === generation) recoverRejectedPaidBotProof(pending);
               return;
             }
+            const controlled = controlledAuthorizationResponse(result, controlledMemberOrigin);
+            if (response.ok && controlled) {
+              if (accountGeneration.current === generation) window.location.assign(controlled.authorizationUrl);
+              return; // Preserve durable submission recovery until the authenticated return is redeemed.
+            }
             if (!response.ok || !result.registration?.registrationId) throw new Error();
             localStorage.removeItem(pendingKey);
             try { await paidJourneyAction("bindCurrent"); } catch { /* Registration still resumes independently. */ }
@@ -357,7 +365,7 @@ export function MembershipApplicationForm({
         })();
       }
     } catch { if (pending) localStorage.removeItem(pendingKey); }
-  }, [localPaid, canSubmitRegistration]);
+  }, [localPaid, canSubmitRegistration, controlledMemberOrigin]);
 
   const renderTurnstile = useCallback(() => {
     if (
@@ -594,6 +602,11 @@ export function MembershipApplicationForm({
         if (shouldRefreshPaidBotProof(response.status, result.error?.code)) {
           if (accountGeneration.current === generation) recoverRejectedPaidBotProof(localStorage.getItem(pendingKey));
           return;
+        }
+        const controlled = controlledAuthorizationResponse(result, controlledMemberOrigin);
+        if (response.ok && controlled) {
+          if (accountGeneration.current === generation) window.location.assign(controlled.authorizationUrl);
+          return; // Sign-in/account verification precedes privileged controlled intake.
         }
         if (response.ok && result.registration?.registrationId && result.applicationReference) {
           localStorage.removeItem(pendingKey);

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { localPaidRegistrationEnabled } from "@/lib/platoonMembership";
-import { paidRegistrationSiteOrigin } from "@/lib/localPaidGate";
+import { paidRegistrationMemberOrigin, paidRegistrationSiteOrigin } from "@/lib/localPaidGate";
 import { SiteHeader } from "../../SiteHeader";
 import { RegistrationStatus } from "./RegistrationStatus";
 
@@ -10,5 +10,5 @@ export const dynamic = "force-dynamic";
 export default async function RegistrationPage() {
   const origin = paidRegistrationSiteOrigin();
   if (!origin || !localPaidRegistrationEnabled(origin)) notFound();
-  return <><SiteHeader /><main><RegistrationStatus /></main></>;
+  return <><SiteHeader /><main><RegistrationStatus controlledMemberOrigin={paidRegistrationMemberOrigin()} /></main></>;
 }

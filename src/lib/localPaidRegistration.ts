@@ -7,9 +7,12 @@ import { paidRegistrationOrigins, paidRegistrationSiteOrigin } from "./localPaid
 export const REGISTRATION_COOKIE = "bcf_local_registration";
 export const JOURNEY_COOKIE = "bcf_local_registration_journey";
 export const CONTROLLED_INVITATION_COOKIE = "bcf_controlled_registration_invitation";
+export const CONTROLLED_REQUEST_COOKIE = "bcf_controlled_registration_request";
+export const CONTROLLED_REQUEST_MAX_AGE = 24 * 60 * 60;
 const CONTEXT = "bcf-local-paid-registration-v1";
 const JOURNEY_CONTEXT = "bcf-local-paid-registration-journey-v1";
 const INVITATION_CONTEXT = "bcf-controlled-registration-invitation-v1";
+const CONTROLLED_REQUEST_CONTEXT = "bcf-controlled-registration-request-v1";
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 export const JOURNEY_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,256}$/;
@@ -51,6 +54,21 @@ export function readControlledInvitation(raw: string | undefined): string | null
 export function controlledInvitationHeaders(rawCookie: string | undefined): Record<string, string> {
   const token = readControlledInvitation(rawCookie);
   return token ? { "x-membership-controlled-invitation": token } : {};
+}
+
+export function sealControlledRequest(requestToken: string): string {
+  if (!TOKEN_PATTERN.test(requestToken)) throw new Error("Invalid controlled request.");
+  return sealAuthenticatedState({ requestToken, expiresAt: Date.now() + CONTROLLED_REQUEST_MAX_AGE * 1_000 },
+    programCredentials().secret, CONTROLLED_REQUEST_CONTEXT);
+}
+
+export function readControlledRequest(raw: string | undefined): string | null {
+  if (!raw || raw.length > 1_024 || raw.split(".").length !== 3 || raw.split(".").some(part =>
+    !/^[A-Za-z0-9_-]+$/.test(part) || Buffer.from(part, "base64url").toString("base64url") !== part)) return null;
+  const decoded = unsealAuthenticatedState(raw, programCredentials().secret, CONTROLLED_REQUEST_CONTEXT) as Record<string, unknown> | null;
+  return decoded && typeof decoded.requestToken === "string" && TOKEN_PATTERN.test(decoded.requestToken) &&
+    typeof decoded.expiresAt === "number" && Number.isFinite(decoded.expiresAt) && decoded.expiresAt > Date.now()
+    ? decoded.requestToken : null;
 }
 
 export function sealContinuation(registrationId: string, continuation: string): string {

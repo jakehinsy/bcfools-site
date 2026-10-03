@@ -92,6 +92,20 @@ export function paidRegistrationMemberOriginAllowed(url: URL): boolean {
   } catch { return false; }
 }
 
+/** Presentation/navigation context; no browser value selects this origin. */
+export function paidRegistrationMemberOrigin(): string | null {
+  const hosted = paidRegistrationOrigins();
+  if (hosted) return hosted.member;
+  if (process.env.BREW_MEMBERSHIP_PAID_ACCEPTANCE === "true" || process.env.BREW_MEMBERSHIP_PAID_PRODUCTION === "true" ||
+    process.env.BREW_MEMBERSHIP_PAID_LOCAL !== "true" || process.env.NODE_ENV === "production") return null;
+  try {
+    const raw = process.env.PLATOON_MEMBER_WEB_ORIGIN ?? "http://localhost:3002";
+    const member = new URL(raw);
+    return raw === member.origin && member.pathname === "/" && !member.search && !member.hash &&
+      paidRegistrationMemberOriginAllowed(member) ? member.origin : null;
+  } catch { return null; }
+}
+
 export function localPaidRegistrationEnabled(siteOrigin: string): boolean {
   const hosted = paidRegistrationOrigins();
   if (hosted) return siteOrigin === hosted.site;

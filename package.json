@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npm run test:membership-connect && npm run test:membership-profile && npm run test:membership-application-fields && npm run test:local-paid-gate && npm run test:local-paid-journey && npm run test:public-events && npm run test:public-readiness && npm run test:member-login-handoff && npm run test:paid-access && npm run test:paid-policy && npm run test:production-paid-gate && npm run test:paid-submission-recovery",
+    "test": "npm run test:membership-connect && npm run test:membership-profile && npm run test:membership-application-fields && npm run test:local-paid-gate && npm run test:local-paid-journey && npm run test:public-events && npm run test:public-readiness && npm run test:member-login-handoff && npm run test:paid-access && npm run test:paid-policy && npm run test:production-paid-gate && npm run test:paid-submission-recovery && npm run test:controlled-registration-handoff",
     "test:local-paid-gate": "node --experimental-strip-types --test scripts/local-paid-gate.test.mts",
     "test:local-paid-journey": "node --experimental-strip-types --test scripts/local-paid-journey.test.mts",
     "test:membership-connect": "node --test scripts/membership-connect-browser-binding.test.mjs",
@@ -19,7 +19,8 @@
     "test:paid-access": "node --experimental-strip-types --test scripts/paid-registration-access.test.mts",
     "test:paid-policy": "node --experimental-strip-types --test scripts/paid-registration-policy.test.mts",
     "test:production-paid-gate": "node --experimental-strip-types --test scripts/production-paid-gate.test.mts",
-    "test:paid-submission-recovery": "node --experimental-strip-types --test scripts/paid-submission-recovery.test.mts"
+    "test:paid-submission-recovery": "node --experimental-strip-types --test scripts/paid-submission-recovery.test.mts",
+    "test:controlled-registration-handoff": "node --experimental-strip-types --test scripts/controlled-registration-handoff.test.mts"
   },
   "dependencies": {
     "next": "16.3.4",
