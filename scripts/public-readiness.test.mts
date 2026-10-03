@@ -81,6 +81,23 @@ test("renewals leave the public application and require a Platoon member account
   assert.doesNotMatch(config, /shop\/membership-renewal|account\/membership\/renew/);
 });
 
+test("renewal price stays informational while term disclosure stays in the new-member form", async () => {
+  const [joinPage, form] = await Promise.all([
+    readFile(new URL("../src/app/join/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/join/MembershipApplicationForm.tsx", import.meta.url), "utf8"),
+  ]);
+  const hero = joinPage.slice(joinPage.indexOf('<section className={styles.hero}>'), joinPage.indexOf('<section className={styles.applicationSection}'));
+  const existingMembers = joinPage.slice(joinPage.indexOf('<section className={styles.existingMemberSection}'), joinPage.indexOf('</main>'));
+  assert.match(hero, /New membership/);
+  assert.doesNotMatch(hero, /Paid through|formatMembershipTermDate|Annual renewal/);
+  assert.match(existingMembers, /Annual renewal is \$\{siteConfig\.membership\.renewalPrice\}/);
+  assert.match(existingMembers, /renewal payments will be available separately/);
+  assert.match(existingMembers, /href=\{membershipUrl\}/);
+  assert.match(existingMembers, /href=\{existingMemberConnectionUrl\}/);
+  assert.doesNotMatch(existingMembers, /account\/membership\/renew|checkout|<form/i);
+  assert.match(form, /payment covers membership through/);
+});
+
 test("new membership entry points stay on the native same-origin application", async () => {
   const [config, home] = await Promise.all([
     readFile(new URL("../src/config/site.ts", import.meta.url), "utf8"),

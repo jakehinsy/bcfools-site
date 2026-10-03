@@ -106,6 +106,69 @@
   padding-block: clamp(72px, 9vw, 120px);
 }
 
+.existingMemberSection {
+  background: var(--cream-100);
+  padding-block: 0 56px;
+}
+
+.existingMemberContent {
+  border-top: 1px solid rgb(17 19 47 / 16%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 48px;
+  justify-content: space-between;
+  padding-top: 28px;
+}
+
+.existingMemberContent > div:first-child {
+  flex: 1 1 300px;
+  max-width: 600px;
+}
+
+.existingMemberContent h2 {
+  color: var(--navy-950);
+  font-size: 1.25rem;
+  margin: 0 0 10px;
+}
+
+.existingMemberContent p {
+  color: var(--navy-950);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.existingMemberActions {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.existingMemberActions a {
+  align-items: center;
+  color: var(--navy-950);
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 700;
+  gap: 8px;
+  line-height: 1.6;
+  text-underline-offset: 4px;
+}
+
+.existingMemberActions svg {
+  flex-shrink: 0;
+  height: 16px;
+  width: 16px;
+}
+
+.existingMemberActions a:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
 .applicationGrid {
   align-items: start;
   display: grid;
@@ -1153,7 +1216,7 @@
 
   .heroPrices {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .sidebar li,

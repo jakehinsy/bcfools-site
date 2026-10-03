@@ -20,13 +20,12 @@ import { LegalLinks } from "../LegalLinks";
 import { SiteHeader } from "../SiteHeader";
 import { ArrowIcon } from "../ArrowIcon";
 import { MembershipApplicationForm } from "./MembershipApplicationForm";
-import { formatMembershipTermDate } from "./formatMembershipTermDate";
 import styles from "./join.module.css";
 
 export const metadata: Metadata = {
   title: "Brew City FOOLS Membership",
   description:
-    "Apply for a new Brew City FOOLS membership or renew your annual chapter membership.",
+    "Apply for a new Brew City FOOLS membership or manage your existing membership in Platoon.",
   referrer: "no-referrer",
 };
 
@@ -45,6 +44,12 @@ export default async function JoinPage({
   const siteOrigin = paidRegistrationSiteOrigin();
   const localPaid = siteOrigin !== null && localPaidRegistrationEnabled(siteOrigin);
   const renewalUrl = hostedAcceptance ? "" : membershipManagementUrl(siteConfig.links.renewal);
+  const membershipUrl = membershipManagementUrl(siteConfig.links.renewal);
+  const existingMemberEntry = new URL(siteConfig.links.memberDashboard);
+  const existingMemberConnectionUrl = new URL(
+    existingMemberEntry.pathname + existingMemberEntry.search,
+    new URL(membershipUrl).origin,
+  ).toString();
   if (params.type === "renewal" && !hostedAcceptance) redirect(renewalUrl);
   const connectionStatus =
     params.platoon === "connected" ||
@@ -115,13 +120,10 @@ export default async function JoinPage({
                   ? "Join the Brew City chapter and help keep good training, strong friendships, and the traditions of the job moving forward."
                   : "Whether you are joining for the first time or renewing for another year, you are helping keep good training, strong friendships, and the traditions of the job moving forward."}
               </p>
-              <div className={styles.heroPrices} aria-label="Membership prices">
+              <div className={styles.heroPrices} aria-label="New membership price">
                 <span>
-                  New member <strong>{formatMembershipPrice(localPaid ? 7500 : programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100)}</strong>
+                  New membership <strong>{formatMembershipPrice(localPaid ? 7500 : programConfig?.program.newFeeMinor ?? siteConfig.membership.newMemberPrice * 100)}</strong>
                 </span>
-                  {!hostedAcceptance ? <span>
-                  {localPaid ? "Paid through" : "Annual renewal"} <strong>{localPaid ? formatMembershipTermDate(programConfig?.paidRegistration?.paidThrough) : formatMembershipPrice(programConfig?.program.renewalFeeMinor ?? siteConfig.membership.renewalPrice * 100)}</strong>
-                </span> : null}
               </div>
             </div>
           </div>
@@ -235,6 +237,18 @@ export default async function JoinPage({
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        </section>
+        <section className={styles.existingMemberSection} aria-labelledby="existing-member-heading">
+          <div className={`shell ${styles.existingMemberContent}`}>
+            <div>
+              <h2 id="existing-member-heading">Already a Brew City FOOLS member?</h2>
+              <p>Annual renewal is ${siteConfig.membership.renewalPrice}. Manage your membership in Platoon; renewal payments will be available separately.</p>
+            </div>
+            <div className={styles.existingMemberActions}>
+              <a href={membershipUrl}>Manage membership / renew in Platoon <ArrowIcon /></a>
+              <a href={existingMemberConnectionUrl}>Connect an existing membership to Platoon <ArrowIcon /></a>
             </div>
           </div>
         </section>
