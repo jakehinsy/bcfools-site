@@ -91,7 +91,9 @@ test("renewal price stays informational while term disclosure stays in the new-m
   assert.match(hero, /New membership/);
   assert.doesNotMatch(hero, /Paid through|formatMembershipTermDate|Annual renewal/);
   assert.match(existingMembers, /Annual renewal is \$\{siteConfig\.membership\.renewalPrice\}/);
-  assert.match(existingMembers, /renewal payments will be available separately/);
+  assert.match(existingMembers, /Online renewals will be available in Platoon for the next renewal period\./);
+  assert.match(existingMembers, /Manage membership in Platoon/);
+  assert.doesNotMatch(existingMembers, /Manage membership \/ renew/);
   assert.match(existingMembers, /href=\{membershipUrl\}/);
   assert.match(existingMembers, /href=\{existingMemberConnectionUrl\}/);
   assert.doesNotMatch(existingMembers, /account\/membership\/renew|checkout|<form/i);

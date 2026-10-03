@@ -244,10 +244,10 @@ export default async function JoinPage({
           <div className={`shell ${styles.existingMemberContent}`}>
             <div>
               <h2 id="existing-member-heading">Already a Brew City FOOLS member?</h2>
-              <p>Annual renewal is ${siteConfig.membership.renewalPrice}. Manage your membership in Platoon; renewal payments will be available separately.</p>
+              <p>Annual renewal is ${siteConfig.membership.renewalPrice}. Online renewals will be available in Platoon for the next renewal period.</p>
             </div>
             <div className={styles.existingMemberActions}>
-              <a href={membershipUrl}>Manage membership / renew in Platoon <ArrowIcon /></a>
+              <a href={membershipUrl}>Manage membership in Platoon <ArrowIcon /></a>
               <a href={existingMemberConnectionUrl}>Connect an existing membership to Platoon <ArrowIcon /></a>
             </div>
           </div>
